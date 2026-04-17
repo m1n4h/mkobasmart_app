@@ -23,12 +23,12 @@ class AnimatedCard extends StatelessWidget {
       tween: Tween<double>(begin: 0, end: 1),
       duration: Duration(milliseconds: 400 + delay),
       curve: Curves.easeOutCubic,
-      builder: (context, value, child) {
+      builder: (context, value, animatedChild) {
         return Opacity(
           opacity: value,
           child: Transform.translate(
             offset: Offset(0, 20 * (1 - value)),
-            child: child,
+            child: animatedChild,
           ),
         );
       },
@@ -36,9 +36,11 @@ class AnimatedCard extends StatelessWidget {
         onTap: onTap,
         child: Card(
           margin: margin ?? const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          elevation: 2,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: Padding(
             padding: padding ?? const EdgeInsets.all(16),
-            child: this.child,
+            child: child,
           ),
         ),
       ),
