@@ -1,10 +1,16 @@
-// lib/main.dart
+// lib/main.dart (Simplified - No GraphQL)
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:mkobasmart_app/provider/auth_provider.dart';
+import 'package:mkobasmart_app/provider/budget_provider.dart';
+import 'package:mkobasmart_app/provider/debt_provider.dart';
+import 'package:mkobasmart_app/provider/transaction_provider.dart';
 import 'package:provider/provider.dart';
+
 import 'themes/theme_provider.dart';
 import 'themes/app_theme.dart';
 import 'localization/app_localizations.dart';
+
 import 'screens/splash_screen.dart';
 
 void main() async {
@@ -17,8 +23,14 @@ class MkobaSmartApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => ThemeProvider(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => TransactionProvider()),
+        ChangeNotifierProvider(create: (_) => DebtProvider()),
+        ChangeNotifierProvider(create: (_) => BudgetProvider()),
+      ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, _) {
           return MaterialApp(

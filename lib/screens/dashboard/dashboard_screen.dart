@@ -162,6 +162,7 @@ class DashboardContent extends StatelessWidget {
             ),
           ),
           
+          
           // Expense Flow Section
           AnimatedCard(
             delay: 100,

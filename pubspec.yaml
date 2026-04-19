@@ -1,4 +1,3 @@
-# pubspec.yaml
 name: mkobasmart_app
 description: A smart financial management platform for Tanzanians
 publish_to: 'none'
@@ -34,11 +33,18 @@ dependencies:
   sqflite: ^2.3.0
   path_provider: ^2.1.1
   
+  # Network & API
+  http: ^1.1.0
+  graphql_flutter: ^5.1.2
+  
   # Utilities
   image_picker: ^1.0.5
   intl_phone_number_input: ^0.7.3
   url_launcher: ^6.2.1
   
+  # Image
+  image: ^4.1.3
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -51,9 +57,7 @@ flutter:
     - assets/animations/
     - assets/images/
     - assets/icons/
-    - assets/fonts/
-   
-  
+    
   fonts:
     - family: Poppins
       fonts:
