@@ -7,6 +7,9 @@ import '../../widgets/animated_card.dart';
 import '../../localization/app_localizations.dart';
 import '../../provider/transaction_provider.dart';
 import '../../models/transaction_model.dart';
+import '../../services/category_service.dart';
+import '../../models/category_model.dart';
+import '../../utils/auth_guard.dart';
 
 class AddTransactionScreen extends StatefulWidget {
   const AddTransactionScreen({super.key});
@@ -27,34 +30,37 @@ class _AddTransactionScreenState extends State<AddTransactionScreen>
   String _description = '';
   DateTime _selectedDate = DateTime.now();
   File? _receiptImage;
-  
-  // Category lists
-  final List<Map<String, dynamic>> _expenseCategories = [
-    {'name': 'Food & Groceries', 'icon': Icons.restaurant, 'color': 0xFFFF9800},
-    {'name': 'Transport', 'icon': Icons.directions_car, 'color': 0xFF2196F3},
-    {'name': 'Shopping', 'icon': Icons.shopping_bag, 'color': 0xFF9C27B0},
-    {'name': 'Utilities', 'icon': Icons.bolt, 'color': 0xFFF44336},
-    {'name': 'Healthcare', 'icon': Icons.local_hospital, 'color': 0xFF00BCD4},
-    {'name': 'Entertainment', 'icon': Icons.movie, 'color': 0xFFE91E63},
-    {'name': 'Education', 'icon': Icons.school, 'color': 0xFF3F51B5},
-    {'name': 'Rent', 'icon': Icons.home, 'color': 0xFF795548},
-    {'name': 'Other', 'icon': Icons.more_horiz, 'color': 0xFF607D8B},
-  ];
-  
-  final List<Map<String, dynamic>> _incomeCategories = [
-    {'name': 'Salary', 'icon': Icons.attach_money, 'color': 0xFF4CAF50},
-    {'name': 'Freelance', 'icon': Icons.work, 'color': 0xFF2196F3},
-    {'name': 'Investment', 'icon': Icons.trending_up, 'color': 0xFF9C27B0},
-    {'name': 'Gift', 'icon': Icons.card_giftcard, 'color': 0xFFFF9800},
-    {'name': 'Refund', 'icon': Icons.currency_exchange, 'color': 0xFF00BCD4},
-    {'name': 'Other', 'icon': Icons.more_horiz, 'color': 0xFF607D8B},
-  ];
+  final CategoryService _categoryService = CategoryService();
+  List<Category> _expenseCategories = [];
+  List<Category> _incomeCategories = [];
+  bool _isLoadingCategories = false;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _selectedCategory = _expenseCategories[0]['name'];
+    _initialize();
+  }
+
+  Future<void> _initialize() async {
+    final ok = await AuthGuard.ensureAuthenticated(context);
+    if (!ok) return;
+    await _loadCategories();
+  }
+
+  Future<void> _loadCategories() async {
+    setState(() => _isLoadingCategories = true);
+    final categories = await _categoryService.getCategories();
+    _expenseCategories =
+        categories.where((c) => c.categoryType == 'expense').toList();
+    _incomeCategories =
+        categories.where((c) => c.categoryType == 'income').toList();
+    if (_selectedType == 'expense' && _expenseCategories.isNotEmpty) {
+      _selectedCategory = _expenseCategories.first.name;
+    } else if (_selectedType == 'income' && _incomeCategories.isNotEmpty) {
+      _selectedCategory = _incomeCategories.first.name;
+    }
+    setState(() => _isLoadingCategories = false);
   }
 
   Future<void> _pickImage() async {
@@ -70,10 +76,21 @@ class _AddTransactionScreenState extends State<AddTransactionScreen>
   Future<void> _saveTransaction() async {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
+      final sourceCategories =
+          _selectedType == 'expense' ? _expenseCategories : _incomeCategories;
+      if (sourceCategories.isEmpty || _selectedCategory.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Please create a category first.')),
+          );
+        }
+        return;
+      }
       
       final transaction = Transaction(
-        id: DateTime.now().millisecondsSinceEpoch,
+        id: 0,
         transactionType: _selectedType,
+        categoryId: sourceCategories.firstWhere((c) => c.name == _selectedCategory).id,
         categoryName: _selectedCategory,
         amount: _amount,
         description: _description,
@@ -114,14 +131,20 @@ class _AddTransactionScreenState extends State<AddTransactionScreen>
             Tab(text: 'Income'.tr(context)),
           ],
           onTap: (index) {
+            final nextType = index == 0 ? 'expense' : 'income';
+            final nextCategories =
+                nextType == 'expense' ? _expenseCategories : _incomeCategories;
             setState(() {
-              _selectedType = index == 0 ? 'expense' : 'income';
-              _selectedCategory = categories[0]['name'];
+              _selectedType = nextType;
+              _selectedCategory =
+                  nextCategories.isNotEmpty ? nextCategories.first.name : '';
             });
           },
         ),
       ),
-      body: SingleChildScrollView(
+      body: _isLoadingCategories
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
           key: _formKey,
@@ -155,7 +178,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen>
               
               const SizedBox(height: 16),
               
-              // Category Selection
+              // Category Selection (backend categories)
               AnimatedCard(
                 delay: 100,
                 child: Column(
@@ -166,29 +189,28 @@ class _AddTransactionScreenState extends State<AddTransactionScreen>
                       style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                     ),
                     const SizedBox(height: 8),
+                    if (categories.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 8),
+                        child: Text('No categories found. Please create categories first.'),
+                      )
+                    else
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
                       children: categories.map((category) {
-                        final isSelected = _selectedCategory == category['name'];
+                        final isSelected = _selectedCategory == category.name;
                         return FilterChip(
-                          label: Text(category['name']),
+                          label: Text(category.name),
                           selected: isSelected,
-                          avatar: Icon(
-                            category['icon'] as IconData,
-                            size: 18,
-                            color: isSelected ? Colors.white : Color(category['color'] as int),
-                          ),
                           onSelected: (selected) {
                             setState(() {
-                              _selectedCategory = category['name'];
+                              _selectedCategory = category.name;
                             });
                           },
-                          backgroundColor: Color(category['color'] as int).withOpacity(0.1),
-                          selectedColor: Color(category['color'] as int),
-                          labelStyle: TextStyle(
-                            color: isSelected ? Colors.white : Color(category['color'] as int),
-                          ),
+                          backgroundColor: Theme.of(context).cardColor,
+                          selectedColor: Theme.of(context).primaryColor,
+                          labelStyle: TextStyle(color: isSelected ? Colors.white : null),
                         );
                       }).toList(),
                     ),

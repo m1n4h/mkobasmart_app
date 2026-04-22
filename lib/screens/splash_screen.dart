@@ -4,6 +4,7 @@ import 'package:lottie/lottie.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'onboarding_screen.dart';
 import 'authentication/auth_screen.dart';
+import 'dashboard/dashboard_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -35,6 +36,7 @@ class _SplashScreenState extends State<SplashScreen>
     await Future.delayed(const Duration(seconds: 3));
     final prefs = await SharedPreferences.getInstance();
     final isFirstTime = prefs.getBool('is_first_time') ?? true;
+    final isLoggedIn = prefs.getBool('is_logged_in') ?? false;
     
     if (mounted) {
       Navigator.pushReplacement(
@@ -42,7 +44,7 @@ class _SplashScreenState extends State<SplashScreen>
         PageRouteBuilder(
           pageBuilder: (_, __, ___) => isFirstTime
               ? const OnboardingScreen()
-              : const AuthScreen(),
+              : (isLoggedIn ? const DashboardScreen() : const AuthScreen()),
           transitionsBuilder: (_, animation, __, child) {
             return FadeTransition(opacity: animation, child: child);
           },

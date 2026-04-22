@@ -5,6 +5,20 @@ import '../models/debt_model.dart';
 import 'api_service.dart';
 
 class DebtService {
+  String _extractError(dynamic body, {String fallback = 'Request failed'}) {
+    if (body is Map<String, dynamic>) {
+      final error = body['error'];
+      if (error is String && error.isNotEmpty) return error;
+      if (error is Map<String, dynamic>) {
+        final message = error['message']?.toString();
+        if (message != null && message.isNotEmpty) return message;
+      }
+      final message = body['message']?.toString();
+      if (message != null && message.isNotEmpty) return message;
+    }
+    return fallback;
+  }
+
   Future<List<Debt>> getDebts() async {
     try {
       final response = await ApiService.get('/debts/');
@@ -25,7 +39,10 @@ class DebtService {
       if (response.statusCode == 201) {
         return {'success': true, 'data': json.decode(response.body)};
       }
-      return {'success': false, 'error': 'Failed to create debt'};
+      return {
+        'success': false,
+        'error': _extractError(json.decode(response.body), fallback: 'Failed to create debt'),
+      };
     } catch (e) {
       return {'success': false, 'error': e.toString()};
     }
@@ -40,7 +57,10 @@ class DebtService {
       if (response.statusCode == 200) {
         return {'success': true, 'data': json.decode(response.body)};
       }
-      return {'success': false, 'error': 'Failed to make payment'};
+      return {
+        'success': false,
+        'error': _extractError(json.decode(response.body), fallback: 'Failed to make payment'),
+      };
     } catch (e) {
       return {'success': false, 'error': e.toString()};
     }
@@ -58,12 +78,18 @@ class DebtService {
     }
   }
 
-  Future<bool> deleteDebt(int id) async {
+  Future<Map<String, dynamic>> deleteDebt(int id) async {
     try {
       final response = await ApiService.delete('/debts/$id/');
-      return response.statusCode == 204;
+      if (response.statusCode == 204) {
+        return {'success': true};
+      }
+      return {
+        'success': false,
+        'error': _extractError(json.decode(response.body), fallback: 'Failed to delete debt'),
+      };
     } catch (e) {
-      return false;
+      return {'success': false, 'error': e.toString()};
     }
   }
 }

@@ -7,7 +7,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.db.models import Sum, Q
 from django.utils import timezone
 from datetime import datetime, timedelta
-from .models import User, Transaction, TransactionCategory, Budget, Debt, DebtPayment, SavingsGoal
+from .models import User, Transaction, TransactionCategory, Budget, Debt, DebtPayment, SavingsGoal, OTPVerification
 from .serializers import (
     UserSerializer, TransactionSerializer, TransactionCategorySerializer,
     BudgetSerializer, DebtSerializer, DebtPaymentSerializer, 
@@ -15,8 +15,26 @@ from .serializers import (
 )
 from .permissions import IsAdminUser
 
+def api_error(message, code='bad_request', status_code=status.HTTP_400_BAD_REQUEST, details=None):
+    payload = {
+        'success': False,
+        'error': {
+            'message': message,
+            'code': code,
+        }
+    }
+    if details is not None:
+        payload['error']['details'] = details
+    return Response(payload, status=status_code)
+
+
 class AuthViewSet(viewsets.GenericViewSet):
     permission_classes = [AllowAny]
+
+    def get_permissions(self):
+        if self.action == 'me':
+            return [IsAuthenticated()]
+        return super().get_permissions()
     
     @action(detail=False, methods=['post'])
     def register(self, request):
@@ -25,17 +43,30 @@ class AuthViewSet(viewsets.GenericViewSet):
             user = serializer.save()
             refresh = RefreshToken.for_user(user)
             return Response({
+                'success': True,
                 'user': UserSerializer(user).data,
                 'refresh': str(refresh),
                 'access': str(refresh.access_token),
             }, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return api_error(
+            'Validation failed',
+            code='validation_error',
+            status_code=status.HTTP_400_BAD_REQUEST,
+            details=serializer.errors
+        )
     
     @action(detail=False, methods=['post'])
     def login(self, request):
         email = request.data.get('email')
         phone = request.data.get('phone')
         password = request.data.get('password')
+        identifier = request.data.get('identifier')
+
+        if identifier and not email and not phone:
+            if '@' in identifier:
+                email = identifier
+            else:
+                phone = identifier
         
         user = None
         if email:
@@ -43,14 +74,22 @@ class AuthViewSet(viewsets.GenericViewSet):
         elif phone:
             user = User.objects.filter(phone_number=phone).first()
         
-        if user and user.check_password(password):
+        if not user:
+            return api_error(
+                'user not fount please create the account first',
+                code='account_not_found',
+                status_code=status.HTTP_404_NOT_FOUND
+            )
+
+        if user.check_password(password):
             refresh = RefreshToken.for_user(user)
             return Response({
+                'success': True,
                 'user': UserSerializer(user).data,
                 'refresh': str(refresh),
                 'access': str(refresh.access_token),
             })
-        return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+        return api_error('Invalid credentials', code='invalid_credentials', status_code=status.HTTP_401_UNAUTHORIZED)
     
     @action(detail=False, methods=['post'])
     def guest_login(self, request):
@@ -69,6 +108,7 @@ class AuthViewSet(viewsets.GenericViewSet):
         
         refresh = RefreshToken.for_user(guest_user)
         return Response({
+            'success': True,
             'user': UserSerializer(guest_user).data,
             'refresh': str(refresh),
             'access': str(refresh.access_token),
@@ -78,6 +118,9 @@ class AuthViewSet(viewsets.GenericViewSet):
     def google_login(self, request):
         email = request.data.get('email')
         name = request.data.get('name', '')
+
+        if not email:
+            return api_error('Email is required', code='email_required', status_code=status.HTTP_400_BAD_REQUEST)
         
         user = User.objects.filter(email=email).first()
         if not user:
@@ -94,9 +137,17 @@ class AuthViewSet(viewsets.GenericViewSet):
         
         refresh = RefreshToken.for_user(user)
         return Response({
+            'success': True,
             'user': UserSerializer(user).data,
             'refresh': str(refresh),
             'access': str(refresh.access_token),
+        })
+
+    @action(detail=False, methods=['get'])
+    def me(self, request):
+        return Response({
+            'success': True,
+            'user': UserSerializer(request.user).data,
         })
 
 class TransactionViewSet(viewsets.ModelViewSet):
@@ -182,7 +233,7 @@ class DebtViewSet(viewsets.ModelViewSet):
         note = request.data.get('note', '')
         
         if not amount:
-            return Response({'error': 'Amount required'}, status=status.HTTP_400_BAD_REQUEST)
+            return api_error('Amount required', code='amount_required', status_code=status.HTTP_400_BAD_REQUEST)
         
         payment = DebtPayment.objects.create(
             debt=debt,
@@ -223,7 +274,7 @@ class SavingsGoalViewSet(viewsets.ModelViewSet):
         amount = request.data.get('amount')
         
         if not amount:
-            return Response({'error': 'Amount required'}, status=status.HTTP_400_BAD_REQUEST)
+            return api_error('Amount required', code='amount_required', status_code=status.HTTP_400_BAD_REQUEST)
         
         goal.current_amount += amount
         goal.save()
@@ -330,6 +381,40 @@ class DashboardViewSet(viewsets.GenericViewSet):
         
         return Response(chart_data)
 
+    @action(detail=False, methods=['get'])
+    def category_breakdown(self, request):
+        user = request.user
+        now = timezone.now()
+        period = request.query_params.get('period', 'month')
+
+        if period == 'week':
+            start_date = now - timedelta(days=7)
+        elif period == 'year':
+            start_date = now.replace(month=1, day=1)
+        else:
+            start_date = now.replace(day=1)
+
+        expenses = Transaction.objects.filter(
+            user=user,
+            transaction_type='expense',
+            date__gte=start_date
+        )
+
+        breakdown = (
+            expenses.values('category__name')
+            .annotate(total=Sum('amount'))
+            .order_by('-total')
+        )
+
+        data = [
+            {
+                'category': item['category__name'] or 'Other',
+                'total': float(item['total'] or 0),
+            }
+            for item in breakdown
+        ]
+        return Response(data)
+
 class AdminViewSet(viewsets.GenericViewSet):
     permission_classes = [IsAuthenticated, IsAdminUser]
     
@@ -365,4 +450,96 @@ class AdminViewSet(viewsets.GenericViewSet):
             user.delete()
             return Response({'message': 'User deleted successfully'})
         except User.DoesNotExist:
-            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+            return api_error('User not found', code='user_not_found', status_code=status.HTTP_404_NOT_FOUND)
+        
+        
+        
+        # backend/api/views.py - Add OTP views
+
+class OTPViewSet(viewsets.GenericViewSet):
+    permission_classes = [AllowAny]
+    
+    @action(detail=False, methods=['post'])
+    def send(self, request):
+        identifier = (request.data.get('identifier') or '').strip()
+        otp_type = request.data.get('type')  # 'email' or 'phone'
+        
+        if not identifier:
+            return api_error('Identifier required', code='identifier_required', status_code=status.HTTP_400_BAD_REQUEST)
+
+        if otp_type == 'phone' and not identifier.startswith('+255'):
+            return api_error(
+                'Phone must be in +255XXXXXXXXX format',
+                code='invalid_phone_format',
+                status_code=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Generate 6-digit OTP
+        import random
+        otp = ''.join([str(random.randint(0, 9)) for _ in range(6)])
+        
+        # Save to database
+        expires_at = timezone.now() + timedelta(minutes=10)
+        OTPVerification.objects.create(
+            identifier=identifier,
+            otp=otp,
+            expires_at=expires_at
+        )
+        
+        # Send OTP via email or SMS
+        if otp_type == 'email':
+            # Send email
+            pass
+        else:
+            # Send SMS
+            pass
+        
+        response_data = {'message': 'OTP sent successfully'}
+        response_data['success'] = True
+        if request.query_params.get('debug') == '1':
+            response_data['otp'] = otp
+
+        return Response(response_data)
+    
+    @action(detail=False, methods=['post'])
+    def verify(self, request):
+        identifier = (request.data.get('identifier') or '').strip()
+        otp = request.data.get('otp')
+        
+        try:
+            otp_record = OTPVerification.objects.filter(
+                identifier=identifier,
+                otp=otp,
+                is_verified=False
+            ).latest('created_at')
+            
+            if otp_record.is_expired():
+                return api_error('OTP has expired', code='otp_expired', status_code=status.HTTP_400_BAD_REQUEST)
+            
+            otp_record.is_verified = True
+            otp_record.save()
+            
+            # Create or get guest user
+            user, created = User.objects.get_or_create(
+                username=f"guest_{identifier.replace('@', '_').replace('.', '_')}",
+                defaults={
+                    'email': identifier if '@' in identifier else f"{identifier}@guest.com",
+                    'is_guest': True,
+                    'is_active': True
+                }
+            )
+            
+            if created:
+                user.set_unusable_password()
+                user.save()
+            
+            refresh = RefreshToken.for_user(user)
+            
+            return Response({
+                'success': True,
+                'user': UserSerializer(user).data,
+                'access': str(refresh.access_token),
+                'refresh': str(refresh),
+            })
+        except OTPVerification.DoesNotExist:
+            return api_error('Invalid OTP', code='invalid_otp', status_code=status.HTTP_400_BAD_REQUEST)

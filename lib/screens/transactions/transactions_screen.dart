@@ -5,8 +5,8 @@ import '../../widgets/animated_card.dart';
 import '../../localization/app_localizations.dart';
 import '../../provider/transaction_provider.dart';
 import '../../models/transaction_model.dart';
+import '../../utils/auth_guard.dart';
 import 'add_transaction_screen.dart';
-import 'reports_screen.dart';
 
 class TransactionsScreen extends StatefulWidget {
   const TransactionsScreen({super.key});
@@ -26,7 +26,13 @@ class _TransactionsScreenState extends State<TransactionsScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _loadTransactions();
+    _initialize();
+  }
+
+  Future<void> _initialize() async {
+    final ok = await AuthGuard.ensureAuthenticated(context);
+    if (!ok) return;
+    await _loadTransactions();
   }
 
   Future<void> _loadTransactions() async {
@@ -378,7 +384,10 @@ class _TransactionsScreenState extends State<TransactionsScreen>
                 children: [
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: () {},
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _showEditTransactionDialog(transaction);
+                      },
                       icon: const Icon(Icons.edit),
                       label: Text('Edit'.tr(context)),
                     ),
@@ -386,7 +395,10 @@ class _TransactionsScreenState extends State<TransactionsScreen>
                   const SizedBox(width: 12),
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: () {},
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _confirmDeleteTransaction(transaction);
+                      },
                       icon: const Icon(Icons.delete),
                       label: Text('Delete'.tr(context)),
                       style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
@@ -411,6 +423,145 @@ class _TransactionsScreenState extends State<TransactionsScreen>
           Text(value, style: const TextStyle(fontWeight: FontWeight.w500)),
         ],
       ),
+    );
+  }
+
+  Future<void> _confirmDeleteTransaction(Transaction transaction) async {
+    final provider = Provider.of<TransactionProvider>(context, listen: false);
+    final ok = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Delete Transaction'),
+            content: const Text('Are you sure you want to delete this transaction?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Delete'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+
+    if (!ok) return;
+    final deleted = await provider.deleteTransaction(transaction.id);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(deleted ? 'Transaction deleted' : (provider.error ?? 'Failed to delete transaction')),
+      ),
+    );
+  }
+
+  Future<void> _showEditTransactionDialog(Transaction transaction) async {
+    final amountController =
+        TextEditingController(text: transaction.amount.toStringAsFixed(0));
+    final descriptionController = TextEditingController(text: transaction.description);
+    DateTime selectedDate = transaction.date;
+    final formKey = GlobalKey<FormState>();
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Edit Transaction'),
+              content: Form(
+                key: formKey,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextFormField(
+                        controller: amountController,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(labelText: 'Amount'),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) return 'Amount is required';
+                          if (double.tryParse(value.trim()) == null) return 'Enter valid amount';
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: descriptionController,
+                        decoration: const InputDecoration(labelText: 'Description'),
+                      ),
+                      const SizedBox(height: 12),
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: const Icon(Icons.calendar_today),
+                        title: const Text('Date'),
+                        subtitle: Text(_formatDate(selectedDate)),
+                        onTap: () async {
+                          final picked = await showDatePicker(
+                            context: context,
+                            initialDate: selectedDate,
+                            firstDate: DateTime(2020),
+                            lastDate: DateTime.now(),
+                          );
+                          if (picked != null) {
+                            setDialogState(() {
+                              selectedDate = DateTime(
+                                picked.year,
+                                picked.month,
+                                picked.day,
+                                selectedDate.hour,
+                                selectedDate.minute,
+                              );
+                            });
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    if (!formKey.currentState!.validate()) return;
+                    final provider = Provider.of<TransactionProvider>(this.context, listen: false);
+                    final updated = Transaction(
+                      id: transaction.id,
+                      transactionType: transaction.transactionType,
+                      categoryId: transaction.categoryId,
+                      categoryName: transaction.categoryName,
+                      categoryColor: transaction.categoryColor,
+                      categoryIcon: transaction.categoryIcon,
+                      amount: double.parse(amountController.text.trim()),
+                      description: descriptionController.text.trim(),
+                      date: selectedDate,
+                      receiptImage: transaction.receiptImage,
+                      createdAt: transaction.createdAt,
+                      updatedAt: DateTime.now(),
+                    );
+
+                    final ok = await provider.updateTransaction(updated);
+                    if (!mounted) return;
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(this.context).showSnackBar(
+                      SnackBar(
+                        content: Text(ok ? 'Transaction updated' : (provider.error ?? 'Failed to update transaction')),
+                      ),
+                    );
+                  },
+                  child: const Text('Save'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 }

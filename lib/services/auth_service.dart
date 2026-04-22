@@ -6,6 +6,20 @@ import '../models/user_model.dart';
 import 'api_service.dart';
 
 class AuthService {
+  String _extractError(dynamic body, {String fallback = 'Request failed'}) {
+    if (body is Map<String, dynamic>) {
+      final error = body['error'];
+      if (error is String && error.isNotEmpty) return error;
+      if (error is Map<String, dynamic>) {
+        final message = error['message']?.toString();
+        if (message != null && message.isNotEmpty) return message;
+      }
+      final message = body['message']?.toString();
+      if (message != null && message.isNotEmpty) return message;
+    }
+    return fallback;
+  }
+
   Future<Map<String, dynamic>> register({
     required String username,
     required String email,
@@ -33,7 +47,8 @@ class AuthService {
         await _saveTokens(data['access'], data['refresh']);
         return {'success': true, 'user': User.fromJson(data['user'])};
       } else {
-        return {'success': false, 'error': json.decode(response.body)};
+        final body = json.decode(response.body);
+        return {'success': false, 'error': _extractError(body, fallback: 'Failed to register')};
       }
     } catch (e) {
       return {'success': false, 'error': e.toString()};
@@ -61,7 +76,8 @@ class AuthService {
         await _saveTokens(data['access'], data['refresh']);
         return {'success': true, 'user': User.fromJson(data['user'])};
       } else {
-        return {'success': false, 'error': json.decode(response.body)['error']};
+        final body = json.decode(response.body);
+        return {'success': false, 'error': _extractError(body, fallback: 'Login failed')};
       }
     } catch (e) {
       return {'success': false, 'error': e.toString()};
@@ -80,7 +96,8 @@ class AuthService {
         await _saveTokens(data['access'], data['refresh']);
         return {'success': true, 'user': User.fromJson(data['user'])};
       } else {
-        return {'success': false, 'error': 'Guest login failed'};
+        final body = json.decode(response.body);
+        return {'success': false, 'error': _extractError(body, fallback: 'Guest login failed')};
       }
     } catch (e) {
       return {'success': false, 'error': e.toString()};
@@ -106,7 +123,8 @@ class AuthService {
         await _saveTokens(data['access'], data['refresh']);
         return {'success': true, 'user': User.fromJson(data['user'])};
       } else {
-        return {'success': false, 'error': 'Google login failed'};
+        final body = json.decode(response.body);
+        return {'success': false, 'error': _extractError(body, fallback: 'Google login failed')};
       }
     } catch (e) {
       return {'success': false, 'error': e.toString()};
@@ -133,5 +151,27 @@ class AuthService {
   Future<bool> isLoggedIn() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool('is_logged_in') ?? false;
+  }
+
+  Future<Map<String, dynamic>> getCurrentUser() async {
+    try {
+      final response = await ApiService.get('/auth/me/');
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body) as Map<String, dynamic>;
+        final user = User.fromJson(data['user']);
+
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('user_email', user.email);
+        await prefs.setString('user_name', user.fullName);
+        await prefs.setBool('is_admin', user.isAdmin);
+        await prefs.setBool('is_guest', user.isGuest);
+
+        return {'success': true, 'user': user};
+      }
+      final body = json.decode(response.body);
+      return {'success': false, 'error': _extractError(body, fallback: 'Failed to fetch profile')};
+    } catch (e) {
+      return {'success': false, 'error': e.toString()};
+    }
   }
 }

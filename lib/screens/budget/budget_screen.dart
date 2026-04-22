@@ -6,6 +6,8 @@ import '../../localization/app_localizations.dart';
 import '../../provider/budget_provider.dart';
 import '../../models/budget_model.dart';
 import '../../services/category_service.dart';
+import '../../models/category_model.dart';
+import '../../utils/auth_guard.dart';
 
 class BudgetScreen extends StatefulWidget {
   const BudgetScreen({super.key});
@@ -17,12 +19,19 @@ class BudgetScreen extends StatefulWidget {
 class _BudgetScreenState extends State<BudgetScreen> {
   final CategoryService _categoryService = CategoryService();
   Map<String, int> _categoryIdMap = {};
+  List<Category> _categories = [];
   
   @override
   void initState() {
     super.initState();
-    _loadBudgets();
-    _loadCategories();
+    _initialize();
+  }
+
+  Future<void> _initialize() async {
+    final ok = await AuthGuard.ensureAuthenticated(context);
+    if (!ok) return;
+    await _loadBudgets();
+    await _loadCategories();
   }
 
   Future<void> _loadBudgets() async {
@@ -34,10 +43,13 @@ class _BudgetScreenState extends State<BudgetScreen> {
     final categories = await _categoryService.getCategories();
     final Map<String, int> map = {};
     for (var category in categories) {
-      map[category.name] = category.id;
+      if (category.categoryType == 'expense') {
+        map[category.name] = category.id;
+      }
     }
     setState(() {
       _categoryIdMap = map;
+      _categories = categories.where((c) => c.categoryType == 'expense').toList();
     });
   }
 
@@ -46,10 +58,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
     String selectedCategory = '';
     double budgetAmount = 0;
     
-    final List<String> categories = [
-      'Groceries', 'Transport', 'Utilities', 'Shopping',
-      'Entertainment', 'Healthcare', 'Education', 'Rent', 'Other'
-    ];
+    final List<String> categories = _categories.map((c) => c.name).toList();
     
     showModalBottomSheet(
       context: context,
@@ -222,6 +231,10 @@ class _BudgetScreenState extends State<BudgetScreen> {
         const SnackBar(content: Text('Budget set successfully!')),
       );
       _loadBudgets();
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(provider.error ?? 'Failed to set budget')),
+      );
     }
   }
 

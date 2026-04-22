@@ -2,7 +2,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:mkobasmart_app/screens/authentication/forgot_password.dart';
+import 'package:mkobasmart_app/screens/authentication/guest_info_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
+import 'package:mkobasmart_app/provider/auth_provider.dart';
 import '../../widgets/animated_card.dart';
 import '../../widgets/glass_morphism.dart';
 import '../../localization/app_localizations.dart';
@@ -20,107 +23,93 @@ class AuthScreen extends StatefulWidget {
 class _AuthScreenState extends State<AuthScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _phoneController = TextEditingController();
-  bool _isLogin = true;
   bool _obscurePassword = true;
   String? _loginError;
 
-  Future<void> _handleGoogleSignIn() async {
-    try {
-      final GoogleSignIn googleSignIn = GoogleSignIn();
-      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
-      if (googleUser != null) {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('user_email', googleUser.email);
-        await prefs.setString('user_name', googleUser.displayName ?? '');
-        await prefs.setBool('is_logged_in', true);
-        
-        // Check if admin
-        final isAdmin = googleUser.email.toLowerCase().contains('@mkobasmart.com');
-        await prefs.setBool('is_admin', isAdmin);
-        
-        if (mounted) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const DashboardScreen()),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
-      }
-    }
-  }
-
-  Future<void> _handleGuestLogin() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('is_guest', true);
-    await prefs.setBool('is_logged_in', true);
-    await prefs.setBool('is_admin', false);
+Future<void> _handleGoogleSignIn() async {
+  try {
+    // USE THE WEB CLIENT ID HERE
+    final GoogleSignIn googleSignIn = GoogleSignIn(
+      serverClientId: '340028363223-f2lsram6ridkilbcinb97atubuq9hoie.apps.googleusercontent.com',
+      scopes: ['email', 'profile'],
+    );
     
-    if (mounted) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const DashboardScreen()),
-      );
-    }
-  }
+    final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+    
+    if (googleUser != null) {
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      
+      // This idToken is what you send to your Django/PostgreSQL backend
+      final String? idToken = googleAuth.idToken; 
+      debugPrint('ID Token for Django: $idToken');
 
+      final authProvider = context.read<AuthProvider>();
+      final ok = await authProvider.googleLogin(
+        email: googleUser.email,
+        name: googleUser.displayName ?? '',
+      );
+      
+      if (mounted && ok) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const DashboardScreen()),
+        );
+      } else if (mounted && authProvider.error != null) {
+        setState(() {
+          _loginError = authProvider.error;
+        });
+      }
+    }
+  } catch (e) {
+    debugPrint('Google Sign-In Error: $e');
+    // ... rest of your error handling
+  }
+}
+Future<void> _handleGuestLogin() async {
+  Navigator.push(
+    context,
+    MaterialPageRoute(builder: (_) => const GuestInfoScreen()),
+  );
+}
   Future<void> _handleLogin() async {
     setState(() {
       _loginError = null;
     });
 
-    final email = _emailController.text.trim();
+    final identifier = _emailController.text.trim();
     final password = _passwordController.text;
 
-    if (email.isEmpty || password.isEmpty) {
+    if (identifier.isEmpty || password.isEmpty) {
       setState(() {
         _loginError = 'Please enter both email/phone and password';
       });
       return;
     }
 
-    final prefs = await SharedPreferences.getInstance();
-    
-    // For demo purposes, we'll check against stored credentials or accept test accounts
-    final storedEmail = prefs.getString('user_email');
-    final storedPassword = prefs.getString('user_password');
-    
-    // Test admin account
-    if (email == 'admin@mkobasmart.com' && password == 'admin123') {
-      await prefs.setString('user_email', email);
-      await prefs.setString('user_name', 'Admin User');
+    final authProvider = context.read<AuthProvider>();
+    final isEmail = identifier.contains('@');
+    final success = await authProvider.login(
+      email: isEmail ? identifier : null,
+      phone: isEmail ? null : identifier,
+      password: password,
+    );
+
+    if (!mounted) return;
+
+    if (success) {
+      final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('is_logged_in', true);
-      await prefs.setBool('is_admin', true);
-      
-      if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const DashboardScreen()),
-        );
-      }
-      return;
-    }
-    
-    // Check against stored credentials
-    if (storedEmail == email && storedPassword == password) {
-      await prefs.setBool('is_logged_in', true);
-      final isAdmin = email.toLowerCase().contains('@mkobasmart.com');
-      await prefs.setBool('is_admin', isAdmin);
-      
-      if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const DashboardScreen()),
-        );
-      }
+      await prefs.setBool('is_admin', authProvider.currentUser?.isAdmin ?? false);
+      await prefs.setBool('is_guest', authProvider.currentUser?.isGuest ?? false);
+      await prefs.setString('user_email', authProvider.currentUser?.email ?? '');
+      await prefs.setString('user_name', authProvider.currentUser?.fullName ?? '');
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const DashboardScreen()),
+      );
     } else {
       setState(() {
-        _loginError = 'Invalid email or password';
+        _loginError = authProvider.error ?? 'Invalid email or password';
       });
     }
   }

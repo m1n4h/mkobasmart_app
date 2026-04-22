@@ -4,6 +4,20 @@ import '../models/transaction_model.dart';
 import 'api_service.dart';
 
 class TransactionService {
+  String _extractError(dynamic body, {String fallback = 'Request failed'}) {
+    if (body is Map<String, dynamic>) {
+      final error = body['error'];
+      if (error is String && error.isNotEmpty) return error;
+      if (error is Map<String, dynamic>) {
+        final message = error['message']?.toString();
+        if (message != null && message.isNotEmpty) return message;
+      }
+      final message = body['message']?.toString();
+      if (message != null && message.isNotEmpty) return message;
+    }
+    return fallback;
+  }
+
   Future<List<Transaction>> getTransactions() async {
     try {
       final response = await ApiService.get('/transactions/');
@@ -20,22 +34,31 @@ class TransactionService {
 
   Future<Map<String, dynamic>> createTransaction(Transaction transaction, {String? receiptPath}) async {
     try {
+      String? responseBody;
       if (receiptPath != null && receiptPath.isNotEmpty) {
         final response = await ApiService.postMultipart(
           '/transactions/',
           transaction.toJson().map((key, value) => MapEntry(key, value.toString())),
           receiptPath,
         );
+        responseBody = response.body;
         if (response.statusCode == 201) {
           return {'success': true, 'data': json.decode(response.body)};
         }
       } else {
         final response = await ApiService.post('/transactions/', transaction.toJson());
+        responseBody = response.body;
         if (response.statusCode == 201) {
           return {'success': true, 'data': json.decode(response.body)};
         }
       }
-      return {'success': false, 'error': 'Failed to create transaction'};
+      return {
+        'success': false,
+        'error': _extractError(
+          responseBody.isNotEmpty ? json.decode(responseBody) : null,
+          fallback: 'Failed to create transaction',
+        )
+      };
     } catch (e) {
       return {'success': false, 'error': e.toString()};
     }
@@ -47,18 +70,27 @@ class TransactionService {
       if (response.statusCode == 200) {
         return {'success': true, 'data': json.decode(response.body)};
       }
-      return {'success': false, 'error': 'Failed to update transaction'};
+      return {
+        'success': false,
+        'error': _extractError(json.decode(response.body), fallback: 'Failed to update transaction')
+      };
     } catch (e) {
       return {'success': false, 'error': e.toString()};
     }
   }
 
-  Future<bool> deleteTransaction(int id) async {
+  Future<Map<String, dynamic>> deleteTransaction(int id) async {
     try {
       final response = await ApiService.delete('/transactions/$id/');
-      return response.statusCode == 204;
+      if (response.statusCode == 204) {
+        return {'success': true};
+      }
+      return {
+        'success': false,
+        'error': _extractError(json.decode(response.body), fallback: 'Failed to delete transaction')
+      };
     } catch (e) {
-      return false;
+      return {'success': false, 'error': e.toString()};
     }
   }
 

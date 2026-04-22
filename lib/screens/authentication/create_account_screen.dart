@@ -1,6 +1,8 @@
 // lib/screens/authentication/create_account_screen.dart
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
+import 'package:mkobasmart_app/provider/auth_provider.dart';
 import '../../widgets/animated_card.dart';
 import '../../widgets/glass_morphism.dart';
 import '../../localization/app_localizations.dart';
@@ -87,24 +89,37 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
     }
 
     if (isValid) {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('user_name', _fullNameController.text.trim());
-      await prefs.setString('user_email', _emailController.text.trim());
-      await prefs.setString('user_phone', _phoneController.text.trim());
-      await prefs.setString('user_password', _passwordController.text);
-      await prefs.setBool('is_logged_in', true);
-      
-      // Check if admin (email contains @mkobasmart.com)
-      final isAdmin = _emailController.text.trim().toLowerCase().contains('@mkobasmart.com');
-      await prefs.setBool('is_admin', isAdmin);
-      
-      if (mounted) {
+      final fullName = _fullNameController.text.trim();
+      final names = fullName.split(RegExp(r'\s+')).where((e) => e.isNotEmpty).toList();
+      final firstName = names.isNotEmpty ? names.first : '';
+      final lastName = names.length > 1 ? names.sublist(1).join(' ') : '';
+      final username = _emailController.text.trim().split('@').first;
+
+      final authProvider = context.read<AuthProvider>();
+      final registered = await authProvider.register(
+        username: username,
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+        phoneNumber: _phoneController.text.trim(),
+        firstName: firstName,
+        lastName: lastName,
+      );
+
+      if (registered && mounted) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('is_logged_in', true);
+        await prefs.setBool('is_admin', authProvider.currentUser?.isAdmin ?? false);
+        await prefs.setBool('is_guest', authProvider.currentUser?.isGuest ?? false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(isAdmin ? 'Welcome Admin!' : 'Account created successfully!')),
+          const SnackBar(content: Text('Account created successfully!')),
         );
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => const DashboardScreen()),
+        );
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(authProvider.error ?? 'Failed to create account')),
         );
       }
     }

@@ -54,13 +54,13 @@ class BudgetProvider extends ChangeNotifier {
   Future<bool> deleteBudget(int id) async {
     _setLoading(true);
     try {
-      final success = await _budgetService.deleteBudget(id);
-      if (success) {
+      final result = await _budgetService.deleteBudget(id);
+      if (result['success'] == true) {
         await fetchBudgets();
         _setLoading(false);
         return true;
       } else {
-        _error = 'Failed to delete budget';
+        _error = result['error']?.toString() ?? 'Failed to delete budget';
         _setLoading(false);
         return false;
       }

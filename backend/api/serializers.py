@@ -18,8 +18,8 @@ class UserSerializer(serializers.ModelSerializer):
         password = validated_data.pop('password', None)
         user = User(**validated_data)
         
-        # Check if admin (email contains @mkobasmart.com)
-        if user.email and '@mkobasmart.com' in user.email.lower():
+        # Admin must belong to mkobasmart.com domain.
+        if user.email and user.email.lower().endswith('@mkobasmart.com'):
             user.is_admin = True
         
         if password:
@@ -58,6 +58,17 @@ class UserSerializer(serializers.ModelSerializer):
             instance.set_password(password)
         return super().update(instance, validated_data)
 
+    def validate(self, attrs):
+        email = attrs.get('email')
+        if email and '@' in email:
+            email = email.strip().lower()
+            attrs['email'] = email
+
+        # Prevent privilege escalation through payload.
+        attrs.pop('is_admin', None)
+        attrs.pop('is_guest', None)
+        return attrs
+
 class TransactionCategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = TransactionCategory
@@ -74,6 +85,24 @@ class TransactionSerializer(serializers.ModelSerializer):
                   'category_icon', 'amount', 'description', 'date', 'receipt_image', 
                   'created_at', 'updated_at']
         read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def validate(self, attrs):
+        category = attrs.get('category')
+        transaction_type = attrs.get('transaction_type')
+        request = self.context.get('request')
+
+        if category and transaction_type and category.category_type != transaction_type:
+            raise serializers.ValidationError({
+                'category': 'Category type must match transaction type.'
+            })
+
+        if category and request and request.user.is_authenticated:
+            if category.user_id not in (None, request.user.id):
+                raise serializers.ValidationError({
+                    'category': 'You can only use your own or default categories.'
+                })
+
+        return attrs
 
 class BudgetSerializer(serializers.ModelSerializer):
     category_name = serializers.CharField(source='category.name', read_only=True)

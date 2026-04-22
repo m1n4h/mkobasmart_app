@@ -1,18 +1,61 @@
 // lib/screens/more/more_screen.dart
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../widgets/animated_card.dart';
 import '../../localization/app_localizations.dart';
 import '../authentication/auth_screen.dart';
+import '../../utils/auth_guard.dart';
+import '../../services/auth_service.dart';
 
-class MoreScreen extends StatelessWidget {
+class MoreScreen extends StatefulWidget {
   const MoreScreen({super.key});
 
+  @override
+  State<MoreScreen> createState() => _MoreScreenState();
+}
+
+class _MoreScreenState extends State<MoreScreen> {
+  final AuthService _authService = AuthService();
+  String _userName = 'User';
+  String _userEmail = '';
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _initialize();
+  }
+
+  Future<void> _initialize() async {
+    final ok = await AuthGuard.ensureAuthenticated(context);
+    if (!ok) return;
+    final result = await _authService.getCurrentUser();
+    if (!mounted) return;
+
+    if (result['success'] == true) {
+      final user = result['user'];
+      setState(() {
+        _userName = user.fullName.isNotEmpty ? user.fullName : user.username;
+        _userEmail = user.email;
+        _isLoading = false;
+      });
+    } else {
+      await _authService.logout();
+      if (!mounted) return;
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const AuthScreen()),
+        (route) => false,
+      );
+    }
+  }
+
   Future<void> _logout(BuildContext context) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
+    await _authService.logout();
     
     if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Logged out successfully')),
+      );
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (_) => const AuthScreen()),
@@ -23,6 +66,10 @@ class MoreScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
     return SingleChildScrollView(
       child: Column(
         children: [
@@ -38,12 +85,12 @@ class MoreScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'John Mwalimu',
+                  _userName,
                   style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'mwalimu@mkobasmart.com',
+                  _userEmail,
                   style: TextStyle(color: Colors.grey[600]),
                 ),
                 const SizedBox(height: 12),

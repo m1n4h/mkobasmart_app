@@ -12,7 +12,6 @@ class TransactionProvider extends ChangeNotifier {
   String? _error;
   double _totalIncome = 0;
   double _totalExpenses = 0;
-  String _currentFilter = 'All';
 
   List<Transaction> get transactions => _transactions;
   List<Transaction> get filteredTransactions => _filteredTransactions;
@@ -80,13 +79,13 @@ class TransactionProvider extends ChangeNotifier {
   Future<bool> deleteTransaction(int id) async {
     _setLoading(true);
     try {
-      final success = await _transactionService.deleteTransaction(id);
-      if (success) {
+      final result = await _transactionService.deleteTransaction(id);
+      if (result['success'] == true) {
         await fetchTransactions();
         _setLoading(false);
         return true;
       } else {
-        _error = 'Failed to delete transaction';
+        _error = result['error']?.toString() ?? 'Failed to delete transaction';
         _setLoading(false);
         return false;
       }
@@ -105,7 +104,6 @@ class TransactionProvider extends ChangeNotifier {
           .where((t) => t.transactionType.toLowerCase() == type.toLowerCase())
           .toList();
     }
-    _currentFilter = type;
     _calculateTotals();
     notifyListeners();
   }

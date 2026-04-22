@@ -6,6 +6,7 @@ from . import views
 
 router = DefaultRouter()
 router.register(r'auth', views.AuthViewSet, basename='auth')
+router.register(r'otp', views.OTPViewSet, basename='otp')
 router.register(r'transactions', views.TransactionViewSet, basename='transaction')
 router.register(r'categories', views.CategoryViewSet, basename='category')
 router.register(r'budgets', views.BudgetViewSet, basename='budget')

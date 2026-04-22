@@ -77,13 +77,13 @@ class DebtProvider extends ChangeNotifier {
   Future<bool> deleteDebt(int id) async {
     _setLoading(true);
     try {
-      final success = await _debtService.deleteDebt(id);
-      if (success) {
+      final result = await _debtService.deleteDebt(id);
+      if (result['success'] == true) {
         await fetchDebts();
         _setLoading(false);
         return true;
       } else {
-        _error = 'Failed to delete debt';
+        _error = result['error']?.toString() ?? 'Failed to delete debt';
         _setLoading(false);
         return false;
       }

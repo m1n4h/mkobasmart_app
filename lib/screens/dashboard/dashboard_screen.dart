@@ -1,16 +1,19 @@
 // lib/screens/dashboard/dashboard_screen.dart
-import 'package:flutter/material.dart';
+import 'dart:convert';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:mkobasmart_app/widgets/customer_bottom_nav.dart';
-import 'package:mkobasmart_app/widgets/customer_header.dart';
-
-import '../../widgets/animated_card.dart';
-import '../../widgets/pulse_animation.dart';
+import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../localization/app_localizations.dart';
-import '../transactions/transactions_screen.dart';
-import '../debts/debts_screen.dart';
+import '../../services/api_service.dart';
+import '../../widgets/animated_card.dart';
+import '../../widgets/customer_bottom_nav.dart';
+import '../../widgets/customer_header.dart';
+import '../../widgets/pulse_animation.dart';
+import '../authentication/auth_screen.dart';
 import '../budget/budget_screen.dart';
+import '../debts/debts_screen.dart';
 import '../more/more_screen.dart';
+import '../transactions/transactions_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -36,6 +39,7 @@ class _DashboardScreenState extends State<DashboardScreen>
   @override
   void initState() {
     super.initState();
+    _ensureAuthenticated();
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 500),
       vsync: this,
@@ -44,6 +48,18 @@ class _DashboardScreenState extends State<DashboardScreen>
       CurvedAnimation(parent: _animationController, curve: Curves.easeIn),
     );
     _animationController.forward();
+  }
+
+  Future<void> _ensureAuthenticated() async {
+    final prefs = await SharedPreferences.getInstance();
+    final isLoggedIn = prefs.getBool('is_logged_in') ?? false;
+    if (!isLoggedIn && mounted) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const AuthScreen()),
+        (route) => false,
+      );
+    }
   }
 
   @override
@@ -87,90 +103,143 @@ class _DashboardScreenState extends State<DashboardScreen>
 class DashboardContent extends StatelessWidget {
   const DashboardContent({super.key});
 
+  String _formatTsh(num value) {
+    final rounded = value.round();
+    final text = rounded.toString();
+    final buffer = StringBuffer();
+    for (int i = 0; i < text.length; i++) {
+      final reverseIndex = text.length - i;
+      buffer.write(text[i]);
+      if (reverseIndex > 1 && reverseIndex % 3 == 1) {
+        buffer.write(',');
+      }
+    }
+    return 'TSh ${buffer.toString()}';
+  }
+
+  Future<Map<String, dynamic>> _loadDashboardData() async {
+    final summaryResponse = await ApiService.get('/dashboard/summary/');
+    final chartsResponse = await ApiService.get('/dashboard/charts/?period=month');
+    final categoryResponse =
+        await ApiService.get('/dashboard/category_breakdown/?period=month');
+
+    if (summaryResponse.statusCode != 200) {
+      throw Exception('Failed to load dashboard summary');
+    }
+
+    final summary = json.decode(summaryResponse.body) as Map<String, dynamic>;
+    final charts = chartsResponse.statusCode == 200
+        ? (json.decode(chartsResponse.body) as List<dynamic>)
+        : <dynamic>[];
+    final categories = categoryResponse.statusCode == 200
+        ? (json.decode(categoryResponse.body) as List<dynamic>)
+        : <dynamic>[];
+
+    return {
+      'summary': summary,
+      'charts': charts,
+      'categories': categories,
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
-    return SingleChildScrollView(
-      child: Column(
-        children: [
-          // Current Equity Card
-          AnimatedCard(
-            delay: 0,
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Theme.of(context).primaryColor,
-                    Theme.of(context).primaryColor.withOpacity(0.7),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(20),
+    return FutureBuilder<Map<String, dynamic>>(
+      future: _loadDashboardData(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (snapshot.hasError || !snapshot.hasData) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Text(
+                'Failed to load dashboard data from backend.',
+                style: TextStyle(color: isDark ? Colors.white : Colors.black),
               ),
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'current_equity'.tr(context),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                      ),
+            ),
+          );
+        }
+
+        final summary = snapshot.data!['summary'] as Map<String, dynamic>;
+        final charts = snapshot.data!['charts'] as List<dynamic>;
+        final categories = snapshot.data!['categories'] as List<dynamic>;
+        final recentTransactions =
+            (summary['recent_transactions'] as List<dynamic>? ?? []);
+        final totalIncome =
+            double.tryParse(summary['total_income'].toString()) ?? 0;
+        final totalExpenses =
+            double.tryParse(summary['total_expenses'].toString()) ?? 0;
+        final currentEquity =
+            double.tryParse(summary['current_equity'].toString()) ?? 0;
+
+        final chartSpots = <FlSpot>[];
+        for (int i = 0; i < charts.length; i++) {
+          final point = charts[i] as Map<String, dynamic>;
+          final expense = double.tryParse(point['expense'].toString()) ?? 0;
+          chartSpots.add(FlSpot(i.toDouble(), expense));
+        }
+
+        final chartLabels = charts
+            .map((e) => (e as Map<String, dynamic>)['label'].toString())
+            .toList();
+
+        final topThree = categories.take(3).map((e) => e as Map<String, dynamic>).toList();
+
+        return SingleChildScrollView(
+          child: Column(
+            children: [
+              AnimatedCard(
+                delay: 0,
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Theme.of(context).primaryColor,
+                        Theme.of(context).primaryColor.withOpacity(0.7),
+                      ],
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'TSh 4,820,000',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () {},
-                            icon: const Icon(Icons.add, color: Colors.white),
-                            label: Text('deposit'.tr(context)),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.white,
-                              side: const BorderSide(color: Colors.white),
-                            ),
+                        Text(
+                          'current_equity'.tr(context),
+                          style: const TextStyle(color: Colors.white, fontSize: 14),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          _formatTsh(currentEquity),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 32,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () {},
-                            icon: const Icon(Icons.swap_horiz, color: Colors.white),
-                            label: Text('transfer'.tr(context)),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.white,
-                              side: const BorderSide(color: Colors.white),
-                            ),
-                          ),
+                        const SizedBox(height: 8),
+                        Text(
+                          '${'monthly_income'.tr(context)}: ${_formatTsh(totalIncome)}',
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                        Text(
+                          '${'monthly_expenses'.tr(context)}: ${_formatTsh(totalExpenses)}',
+                          style: const TextStyle(color: Colors.white),
                         ),
                       ],
                     ),
-                  ],
+                  ),
                 ),
               ),
-            ),
-          ),
-          
-          
-          // Expense Flow Section
-          AnimatedCard(
-            delay: 100,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              AnimatedCard(
+                delay: 100,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       'expense_flow'.tr(context),
@@ -179,113 +248,80 @@ class DashboardContent extends StatelessWidget {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.red.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.trending_up, size: 16, color: Colors.red),
-                          const SizedBox(width: 4),
-                          Text(
-                            '+12.4%',
-                            style: const TextStyle(color: Colors.red, fontSize: 12),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  height: 200,
-                  child: LineChart(
-                    LineChartData(
-                      gridData: FlGridData(show: false),
-                      titlesData: FlTitlesData(
-                        leftTitles: AxisTitles(
-                          sideTitles: SideTitles(showTitles: true, reservedSize: 40),
-                        ),
-                        bottomTitles: AxisTitles(
-                          sideTitles: SideTitles(
-                            showTitles: true,
-                            getTitlesWidget: (value, meta) {
-                              const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                              if (value.toInt() >= 0 && value.toInt() < months.length) {
-                                return Text(months[value.toInt()], style: const TextStyle(fontSize: 10));
-                              }
-                              return const Text('');
-                            },
-                          ),
-                        ),
-                      ),
-                      borderData: FlBorderData(show: false),
-                      lineBarsData: [
-                        LineChartBarData(
-                          spots: const [
-                            FlSpot(0, 100),
-                            FlSpot(1, 120),
-                            FlSpot(2, 110),
-                            FlSpot(3, 140),
-                            FlSpot(4, 130),
-                            FlSpot(5, 160),
-                            FlSpot(6, 150),
-                            FlSpot(7, 180),
-                            FlSpot(8, 170),
-                            FlSpot(9, 200),
-                            FlSpot(10, 190),
-                            FlSpot(11, 220),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      height: 200,
+                      child: LineChart(
+                        LineChartData(
+                          gridData: FlGridData(show: false),
+                          borderData: FlBorderData(show: false),
+                          lineBarsData: [
+                            LineChartBarData(
+                              spots: chartSpots.isEmpty
+                                  ? const [FlSpot(0, 0)]
+                                  : chartSpots,
+                              isCurved: true,
+                              color: Theme.of(context).primaryColor,
+                              barWidth: 3,
+                              dotData: FlDotData(show: false),
+                            ),
                           ],
-                          isCurved: true,
-                          color: Theme.of(context).primaryColor,
-                          barWidth: 3,
-                          dotData: FlDotData(show: false),
+                          titlesData: FlTitlesData(
+                            leftTitles: AxisTitles(
+                              sideTitles: SideTitles(showTitles: true, reservedSize: 40),
+                            ),
+                            bottomTitles: AxisTitles(
+                              sideTitles: SideTitles(
+                                showTitles: true,
+                                getTitlesWidget: (value, meta) {
+                                  final idx = value.toInt();
+                                  if (idx >= 0 && idx < chartLabels.length) {
+                                    return Text(chartLabels[idx], style: const TextStyle(fontSize: 10));
+                                  }
+                                  return const Text('');
+                                },
+                              ),
+                            ),
+                          ),
                         ),
-                      ],
+                      ),
                     ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          
-          // Categories Section
-          AnimatedCard(
-            delay: 200,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'categories'.tr(context),
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    _buildCategoryItem('Groceries', 45, Colors.green),
-                    const SizedBox(width: 16),
-                    _buildCategoryItem('Transport', 20, Colors.blue),
-                    const SizedBox(width: 16),
-                    _buildCategoryItem('Shopping', 35, Colors.orange),
                   ],
                 ),
-              ],
-            ),
-          ),
-          
-          // Recent Transactions
-          AnimatedCard(
-            delay: 300,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              ),
+              AnimatedCard(
+                delay: 300,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'categories'.tr(context),
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 12),
+                    if (topThree.isEmpty)
+                      const Text('No expense categories yet.')
+                    else
+                      ...topThree.map((c) {
+                        final total = double.tryParse(c['total'].toString()) ?? 0;
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(c['category'].toString()),
+                              Text(_formatTsh(total)),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                  ],
+                ),
+              ),
+              AnimatedCard(
+                delay: 350,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       'recent_transactions'.tr(context),
@@ -294,155 +330,78 @@ class DashboardContent extends StatelessWidget {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    TextButton(
-                      onPressed: () {},
-                      child: Text('view_all'.tr(context)),
-                    ),
+                    ...recentTransactions.take(5).map((tx) {
+                      final txMap = tx as Map<String, dynamic>;
+                      final isExpense = txMap['transaction_type'] == 'expense';
+                      final amount =
+                          double.tryParse(txMap['amount'].toString()) ?? 0;
+                      return _buildTransactionItem(
+                        (txMap['description']?.toString().isNotEmpty ?? false)
+                            ? txMap['description'].toString()
+                            : (txMap['category_name'] ?? 'Transaction')
+                                .toString(),
+                        '${isExpense ? '-' : '+'}${_formatTsh(amount)}',
+                        isExpense ? Icons.remove_circle : Icons.add_circle,
+                      );
+                    }).toList(),
                   ],
                 ),
-                _buildTransactionItem('Shoppers Plaza', '-TSh 124,000', Icons.shopping_bag),
-                _buildTransactionItem('TANESCO', '-TSh 50,000', Icons.electric_bolt),
-                _buildTransactionItem('Bolt Ride', '-TSh 12,500', Icons.directions_car),
-                _buildTransactionItem('Salary Deposit', '+TSh 3,200,000', Icons.attach_money),
-              ],
-            ),
-          ),
-          
-          // Budget Overview
-          AnimatedCard(
-            delay: 400,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'budget_overview'.tr(context),
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    ElevatedButton(
-                      onPressed: () {},
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      ),
-                      child: Text('set_budget'.tr(context)),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                LinearProgressIndicator(
-                  value: 0.924,
-                  backgroundColor: Colors.grey[300],
-                  color: Theme.of(context).primaryColor,
-                  borderRadius: BorderRadius.circular(10),
-                  minHeight: 10,
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('${'monthly_income'.tr(context)}: TSh 1,450,000'),
-                    Text('${'monthly_expenses'.tr(context)}: TSh 842,200'),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          
-          // Savings Card
-          AnimatedCard(
-            delay: 500,
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Colors.orange,
-                    Colors.deepOrange,
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(20),
               ),
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+              AnimatedCard(
+                delay: 400,
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Colors.orange, Colors.deepOrange],
+                    ),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          'savings'.tr(context),
-                          style: const TextStyle(color: Colors.white),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'savings'.tr(context),
+                              style: const TextStyle(color: Colors.white),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              _formatTsh(totalIncome - totalExpenses),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'TSh 607,800',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
+                        PulseAnimation(
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.savings,
+                              color: Colors.orange,
+                              size: 30,
+                            ),
                           ),
                         ),
                       ],
                     ),
-                    PulseAnimation(
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.savings,
-                          color: Colors.orange,
-                          size: 30,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCategoryItem(String name, double percentage, Color color) {
-    return Expanded(
-      child: Column(
-        children: [
-          Container(
-            height: 80,
-            width: 80,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                CircularProgressIndicator(
-                  value: percentage / 100,
-                  strokeWidth: 8,
-                  backgroundColor: Colors.grey[200],
-                  color: color,
-                ),
-                Text(
-                  '${percentage.toInt()}%',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-          const SizedBox(height: 8),
-          Text(name, style: const TextStyle(fontSize: 12)),
-        ],
-      ),
+        );
+      },
     );
   }
 

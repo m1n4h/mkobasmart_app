@@ -5,6 +5,7 @@ import '../../widgets/animated_card.dart';
 import '../../localization/app_localizations.dart';
 import '../../provider/debt_provider.dart';
 import '../../models/debt_model.dart';
+import '../../utils/auth_guard.dart';
 
 class DebtsScreen extends StatefulWidget {
   const DebtsScreen({super.key});
@@ -21,7 +22,13 @@ class _DebtsScreenState extends State<DebtsScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _loadDebts();
+    _initialize();
+  }
+
+  Future<void> _initialize() async {
+    final ok = await AuthGuard.ensureAuthenticated(context);
+    if (!ok) return;
+    await _loadDebts();
   }
 
   Future<void> _loadDebts() async {
@@ -218,7 +225,7 @@ class _DebtsScreenState extends State<DebtsScreen>
                                 if (_formKey.currentState!.validate()) {
                                   _formKey.currentState!.save();
                                   _saveDebt(
-                                     id: DateTime.now().millisecondsSinceEpoch,
+                                     id: 0,
       counterpartyName: title,
       debtType: debtType,
       isOwedToMe: isOwedToMe,
@@ -227,9 +234,9 @@ class _DebtsScreenState extends State<DebtsScreen>
       description: description,
       dueDate: dueDate,
       status: 'pending',
-       createdAt: DateTime.now(),
-    updatedAt: DateTime.now(),
-     title: '',
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+      title: title,
                                   );
                                   Navigator.pop(context);
                                 }
@@ -269,7 +276,7 @@ class _DebtsScreenState extends State<DebtsScreen>
   required String title,
   }) async {
     final debt = Debt(
-      id: DateTime.now().millisecondsSinceEpoch,
+      id: id,
       counterpartyName: title,
       debtType: debtType,
       isOwedToMe: isOwedToMe,
@@ -290,6 +297,10 @@ class _DebtsScreenState extends State<DebtsScreen>
         const SnackBar(content: Text('Debt added successfully!')),
       );
       _loadDebts();
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(provider.error ?? 'Failed to add debt')),
+      );
     }
   }
 
@@ -355,6 +366,10 @@ class _DebtsScreenState extends State<DebtsScreen>
                       const SnackBar(content: Text('Payment recorded successfully!')),
                     );
                     _loadDebts();
+                  } else if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(provider.error ?? 'Failed to record payment')),
+                    );
                   }
                 }
               },
@@ -473,7 +488,7 @@ class _DebtsScreenState extends State<DebtsScreen>
               ),
             ),
             
-            // Debt-to-Income Health Card
+            // Debt Health Card (derived from backend totals)
             AnimatedCard(
               delay: 200,
               child: Container(
@@ -499,7 +514,9 @@ class _DebtsScreenState extends State<DebtsScreen>
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        'Your current debtor obligations have up to 18% of your monthly growth.',
+                        debtProvider.totalOwedToMe == 0
+                            ? 'No debt data available yet.'
+                            : 'Debt balance ratio: ${((debtProvider.totalIOwe / debtProvider.totalOwedToMe) * 100).toStringAsFixed(1)}%',
                         style: TextStyle(color: Colors.white.withOpacity(0.9)),
                       ),
                       const SizedBox(height: 12),
@@ -514,12 +531,20 @@ class _DebtsScreenState extends State<DebtsScreen>
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: const Text(
-                              '840',
+                              '',
                               style: TextStyle(
                                 color: Colors.deepPurple,
                                 fontWeight: FontWeight.bold,
                                 fontSize: 18,
                               ),
+                            ),
+                          ),
+                          Text(
+                            '${(1000 - (debtProvider.totalIOwe / (debtProvider.totalOwedToMe == 0 ? 1 : debtProvider.totalOwedToMe) * 100)).clamp(300, 999).toStringAsFixed(0)}',
+                            style: const TextStyle(
+                              color: Colors.deepPurple,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
                             ),
                           ),
                         ],
