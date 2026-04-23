@@ -75,3 +75,14 @@ MkobaSmart provides a simple, user-friendly digital platform that enables users 
 7. Double-entry style management for savings, insurance, loans, and real estate
 8. Advanced budget features (monthly category budgets)
 9. Asset trend tracking in charts
+
+
+
+
+# test end point is here
+http://localhost:8000/swagger/
+
+# other
+http://localhost:8000/api/transactions/
+http://localhost:8000/api/savings-goals/
+http://localhost:8000/api/token/refresh/

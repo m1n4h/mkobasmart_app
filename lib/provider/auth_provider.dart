@@ -114,38 +114,33 @@ class AuthProvider extends ChangeNotifier {
       return false;
     }
   }
+Future<bool> googleLogin({required String email, required String name}) async {
+  _setLoading(true);
+  _clearError();
 
-  Future<bool> googleLogin({
-    required String email,
-    required String name,
-  }) async {
-    _setLoading(true);
-    _clearError();
+  try {
+    // Pass the data to your service!
+    final result = await _authService.googleLogin(email: email, name: name);
 
-    try {
-      final result = await _authService.googleLogin(
-        email: email,
-        name: name,
-      );
-
-      if (result['success']) {
-        _currentUser = result['user'];
-        _setLoading(false);
-        notifyListeners();
-        return true;
-      } else {
-        _error = result['error'].toString();
-        _setLoading(false);
-        notifyListeners();
-        return false;
-      }
-    } catch (e) {
-      _error = e.toString();
+    if (result['success']) {
+      _currentUser = result['user'];
+      // Store your tokens here (Access/Refresh)
+      _setLoading(false);
+      notifyListeners();
+      return true;
+    } else {
+      _error = result['error']?['message'] ?? 'Login failed';
       _setLoading(false);
       notifyListeners();
       return false;
     }
+  } catch (e) {
+    _error = "Connection Error: Check if server is running";
+    _setLoading(false);
+    notifyListeners();
+    return false;
   }
+}
 
   Future<void> logout() async {
     await _authService.logout();

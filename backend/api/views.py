@@ -9,7 +9,7 @@ from django.utils import timezone
 from datetime import datetime, timedelta
 from .models import User, Transaction, TransactionCategory, Budget, Debt, DebtPayment, SavingsGoal, OTPVerification
 from .serializers import (
-    UserSerializer, TransactionSerializer, TransactionCategorySerializer,
+    GoogleLoginSerializer, UserSerializer, TransactionSerializer, TransactionCategorySerializer,
     BudgetSerializer, DebtSerializer, DebtPaymentSerializer, 
     SavingsGoalSerializer, DashboardSummarySerializer
 )
@@ -29,13 +29,14 @@ def api_error(message, code='bad_request', status_code=status.HTTP_400_BAD_REQUE
 
 
 class AuthViewSet(viewsets.GenericViewSet):
+    serializer_class = UserSerializer
     permission_classes = [AllowAny]
 
     def get_permissions(self):
         if self.action == 'me':
             return [IsAuthenticated()]
         return super().get_permissions()
-    
+
     @action(detail=False, methods=['post'])
     def register(self, request):
         serializer = UserSerializer(data=request.data)
@@ -54,7 +55,7 @@ class AuthViewSet(viewsets.GenericViewSet):
             status_code=status.HTTP_400_BAD_REQUEST,
             details=serializer.errors
         )
-    
+
     @action(detail=False, methods=['post'])
     def login(self, request):
         email = request.data.get('email')
@@ -76,7 +77,7 @@ class AuthViewSet(viewsets.GenericViewSet):
         
         if not user:
             return api_error(
-                'user not fount please create the account first',
+                'Account not found. Please create an account first.',
                 code='account_not_found',
                 status_code=status.HTTP_404_NOT_FOUND
             )
@@ -90,14 +91,14 @@ class AuthViewSet(viewsets.GenericViewSet):
                 'access': str(refresh.access_token),
             })
         return api_error('Invalid credentials', code='invalid_credentials', status_code=status.HTTP_401_UNAUTHORIZED)
-    
+
     @action(detail=False, methods=['post'])
     def guest_login(self, request):
-        # Create or get guest user
+        username = f"guest_{int(datetime.now().timestamp())}"
         guest_user, created = User.objects.get_or_create(
-            username=f"guest_{datetime.now().timestamp()}",
+            username=username,
             defaults={
-                'email': f"guest_{datetime.now().timestamp()}@guest.com",
+                'email': f"{username}@guest.com",
                 'is_guest': True,
                 'is_active': True
             }
@@ -113,28 +114,38 @@ class AuthViewSet(viewsets.GenericViewSet):
             'refresh': str(refresh),
             'access': str(refresh.access_token),
         })
-    
-    @action(detail=False, methods=['post'])
+
+    @action(detail=False, methods=['post'], url_path='google_login')
     def google_login(self, request):
         email = request.data.get('email')
         name = request.data.get('name', '')
+        phone = request.data.get('phone') 
 
         if not email:
             return api_error('Email is required', code='email_required', status_code=status.HTTP_400_BAD_REQUEST)
         
+        # 1. Try to find existing user
         user = User.objects.filter(email=email).first()
+        
+        if not user and phone:
+            user = User.objects.filter(phone_number=phone).first()
+
+        # 2. Create if doesn't exist
         if not user:
-            # Create new user
             username = email.split('@')[0]
+            if User.objects.filter(username=username).exists():
+                username = f"{username}_{int(datetime.now().timestamp())}"
+                
             user = User.objects.create_user(
                 username=username,
                 email=email,
                 first_name=name,
-                password=None
+                phone_number=phone
             )
             user.set_unusable_password()
             user.save()
         
+        # 3. Generate tokens
         refresh = RefreshToken.for_user(user)
         return Response({
             'success': True,
@@ -151,6 +162,7 @@ class AuthViewSet(viewsets.GenericViewSet):
         })
 
 class TransactionViewSet(viewsets.ModelViewSet):
+    serializer_class = UserSerializer  # Add this at the top
     serializer_class = TransactionSerializer
     permission_classes = [IsAuthenticated]
     
@@ -282,6 +294,7 @@ class SavingsGoalViewSet(viewsets.ModelViewSet):
         return Response(SavingsGoalSerializer(goal).data)
 
 class DashboardViewSet(viewsets.GenericViewSet):
+    serializer_class = UserSerializer  # Add this at the top
     permission_classes = [IsAuthenticated]
     
     @action(detail=False, methods=['get'])
@@ -417,7 +430,8 @@ class DashboardViewSet(viewsets.GenericViewSet):
 
 class AdminViewSet(viewsets.GenericViewSet):
     permission_classes = [IsAuthenticated, IsAdminUser]
-    
+    queryset = User.objects.none() # Dummy queryset for Swagger
+    serializer_class = UserSerializer # Or whatever serializer you use
     @action(detail=False, methods=['get'])
     def dashboard(self, request):
         total_users = User.objects.count()
@@ -457,6 +471,7 @@ class AdminViewSet(viewsets.GenericViewSet):
         # backend/api/views.py - Add OTP views
 
 class OTPViewSet(viewsets.GenericViewSet):
+    serializer_class = UserSerializer  # Add this at the top
     permission_classes = [AllowAny]
     
     @action(detail=False, methods=['post'])

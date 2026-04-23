@@ -30,7 +30,7 @@ Future<void> _handleGoogleSignIn() async {
   try {
     // USE THE WEB CLIENT ID HERE
     final GoogleSignIn googleSignIn = GoogleSignIn(
-      serverClientId: '340028363223-f2lsram6ridkilbcinb97atubuq9hoie.apps.googleusercontent.com',
+      clientId: '340028363223-f2lsram6ridkilbcinb97atubuq9hoie.apps.googleusercontent.com',
       scopes: ['email', 'profile'],
     );
     

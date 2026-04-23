@@ -1,4 +1,4 @@
-package com.tamzan.mkobasmart_app 
+package com.example.mkobasmart_app 
 
 import io.flutter.embedding.android.FlutterActivity
 

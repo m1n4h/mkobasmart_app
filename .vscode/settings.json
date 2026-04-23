@@ -1,6 +1,9 @@
 {
     "cSpell.words": [
-        "Filter"
+        "Filter",
+        "include",
+        "urls"
     ],
-    "cmake.sourceDirectory": "/home/minah/Pictures/projects/mkoba_app/mkobasmart_app/linux"
+    "cmake.sourceDirectory": "/home/minah/Pictures/projects/mkoba_app/mkobasmart_app/linux",
+    "envWatcher.enabled": false
 }

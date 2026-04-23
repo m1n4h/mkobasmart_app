@@ -68,7 +68,12 @@ class UserSerializer(serializers.ModelSerializer):
         attrs.pop('is_admin', None)
         attrs.pop('is_guest', None)
         return attrs
-
+class GoogleLoginSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    name = serializers.CharField(required=False)
+    # Adding an empty Meta can sometimes satisfy drf-yasg's inspector
+    class Meta:
+        fields = ['email', 'name']
 class TransactionCategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = TransactionCategory

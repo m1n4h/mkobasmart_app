@@ -1,5 +1,6 @@
 // lib/services/auth_service.dart
 import 'dart:convert';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_model.dart';
@@ -104,33 +105,32 @@ class AuthService {
     }
   }
 
-  Future<Map<String, dynamic>> googleLogin({
-    required String email,
-    required String name,
-  }) async {
-    try {
-      final response = await http.post(
-        Uri.parse('${ApiService.baseUrl}/auth/google_login/'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'email': email,
-          'name': name,
-        }),
-      );
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        await _saveTokens(data['access'], data['refresh']);
-        return {'success': true, 'user': User.fromJson(data['user'])};
-      } else {
-        final body = json.decode(response.body);
-        return {'success': false, 'error': _extractError(body, fallback: 'Google login failed')};
-      }
-    } catch (e) {
-      return {'success': false, 'error': e.toString()};
-    }
+
+Future<Map<String, dynamic>> googleLogin({required String email, required String name}) async {
+  // 1. Ensure the URL has the trailing slash
+  final url = Uri.parse('http://192.168.0.107:8000/api/auth/google_login/');
+
+  try {
+    // 2. THIS MUST BE http.post, NOT http.get
+    final response = await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: jsonEncode({
+        'email': email,
+        'name': name,
+      }),
+    );
+
+    return jsonDecode(response.body);
+  } catch (e) {
+    print('Connection Error: $e');
+    return {'success': false, 'error': 'Could not connect to server'};
   }
-
+}
   Future<void> _saveTokens(String access, String refresh) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('access_token', access);
