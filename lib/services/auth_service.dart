@@ -108,13 +108,13 @@ class AuthService {
 
 
 Future<Map<String, dynamic>> googleLogin({required String email, required String name}) async {
-  // 1. Ensure the URL has the trailing slash
-  final url = Uri.parse('http://192.168.0.107:8000/api/auth/google_login/');
+  // Ensure ApiService.baseUrl is "http://192.168.0.107:8000/api"
+  final String url = "${ApiService.baseUrl}/auth/google_login/"; 
 
   try {
-    // 2. THIS MUST BE http.post, NOT http.get
+    print('Sending POST to: $url');
     final response = await http.post(
-      url,
+      Uri.parse(url),
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
@@ -125,12 +125,23 @@ Future<Map<String, dynamic>> googleLogin({required String email, required String
       }),
     );
 
-    return jsonDecode(response.body);
+    print('Server Response Code: ${response.statusCode}');
+    
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      final data = jsonDecode(response.body);
+      // DON'T FORGET TO SAVE TOKENS
+      await _saveTokens(data['access'], data['refresh']);
+      return {'success': true, 'user': User.fromJson(data['user'])};
+    } else {
+      final body = jsonDecode(response.body);
+      return {'success': false, 'error': _extractError(body)};
+    }
   } catch (e) {
-    print('Connection Error: $e');
-    return {'success': false, 'error': 'Could not connect to server'};
+    print('Flutter Error Details: $e');
+    return {'success': false, 'error': 'Connection failed: $e'};
   }
 }
+
   Future<void> _saveTokens(String access, String refresh) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('access_token', access);

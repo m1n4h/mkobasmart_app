@@ -16,16 +16,18 @@ class Category {
     required this.isDefault,
   });
 
-  factory Category.fromJson(Map<String, dynamic> json) {
-    return Category(
-      id: json['id'],
-      name: json['name'] ?? '',
-      categoryType: json['category_type'] ?? 'expense',
-      icon: json['icon'],
-      color: json['color'] ?? '#2E7D32',
-      isDefault: json['is_default'] ?? false,
-    );
-  }
+ factory Category.fromJson(Map<String, dynamic> json) {
+  return Category(
+    id: json['id'] ?? 0,
+    name: json['name'] ?? 'Unnamed',
+    categoryType: json['category_type'] ?? 'expense',
+    icon: json['icon'],
+    color: (json['color'] != null && json['color'].toString().startsWith('#')) 
+        ? json['color'] 
+        : '#2E7D32',
+    isDefault: json['is_default'] ?? false,
+  );
+}
 
   Map<String, dynamic> toJson() {
     return {

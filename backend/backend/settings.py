@@ -16,10 +16,13 @@ DEBUG = config('DEBUG', default=True, cast=bool)
 # backend/backend/settings.py
 
 ALLOWED_HOSTS = [
-    'localhost', 
-    '127.0.0.1', 
-    '192.168.0.107', 
-    '0.0.0.0'
+    '192.168.0.107',
+    '172.17.0.1',
+    '172.18.0.1',
+    '172.20.0.1',
+    '172.21.0.1',
+    '172.19.0.1' 
+
 ]
 
 INSTALLED_APPS = [

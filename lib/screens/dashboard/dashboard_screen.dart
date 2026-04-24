@@ -2,6 +2,7 @@
 import 'dart:convert';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:mkobasmart_app/widgets/category_nav_card.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../localization/app_localizations.dart';
 import '../../services/api_service.dart';
@@ -34,6 +35,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     const DebtsScreen(),
     const BudgetScreen(),
     const MoreScreen(),
+    const CategoryNavCard(),
   ];
 
   @override

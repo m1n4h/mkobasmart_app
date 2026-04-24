@@ -37,6 +37,7 @@ class CustomBottomNav extends StatelessWidget {
         icon: Icons.account_balance_wallet_outlined,
         activeIcon: Icons.account_balance_wallet,
       ),
+        
       BottomNavItem(
         label: 'more'.tr(context),
         icon: Icons.more_horiz,

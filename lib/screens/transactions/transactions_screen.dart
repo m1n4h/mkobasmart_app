@@ -1,5 +1,6 @@
 // lib/screens/transactions/transactions_screen.dart
 import 'package:flutter/material.dart';
+import 'package:mkobasmart_app/screens/category/category_list_screen.dart';
 import 'package:provider/provider.dart';
 import '../../widgets/animated_card.dart';
 import '../../localization/app_localizations.dart';
@@ -80,7 +81,66 @@ class _TransactionsScreenState extends State<TransactionsScreen>
               ),
             ),
           ),
-          
+
+          // ... after Search Bar Container ...
+const SizedBox(height: 16),
+GestureDetector(
+  onTap: () => Navigator.push(
+    context, 
+    MaterialPageRoute(builder: (_) => const CategoryListScreen())
+  ),
+  child: Container(
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      // Dark Mode & Light Mode support
+      color: Theme.of(context).brightness == Brightness.dark 
+          ? const Color(0xFF2C2C2C) 
+          : Colors.white,
+      borderRadius: BorderRadius.circular(15),
+      border: Border.all(
+        color: Theme.of(context).primaryColor.withOpacity(0.2),
+      ),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.05),
+          blurRadius: 10,
+          offset: const Offset(0, 4),
+        ),
+      ],
+    ),
+    child: Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: Theme.of(context).primaryColor.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(Icons.category_outlined, color: Theme.of(context).primaryColor),
+        ),
+        const SizedBox(width: 15),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "manage_categories".tr(context),
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              Text(
+                "add_or_edit_shop_items".tr(context),
+                style: const TextStyle(color: Colors.grey, fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+        const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+      ],
+    ),
+  ),
+),
+const SizedBox(height: 16),
+
           // Filter Chips
           AnimatedCard(
             delay: 100,

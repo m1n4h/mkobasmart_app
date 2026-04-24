@@ -67,18 +67,22 @@ class ApiService {
     return request(headers);
   }
 
-  static Future<http.Response> get(String endpoint) async {
+ static Future<http.Response> get(String endpoint) async {
+    // Ensure the endpoint starts with / and ends with /
+    final formattedEndpoint = endpoint.startsWith('/') ? endpoint : '/$endpoint';
+    final finalUrl = formattedEndpoint.endsWith('/') ? formattedEndpoint : '$formattedEndpoint/';
+
     return _requestWithRefresh(
-      (headers) => http.get(Uri.parse('$baseUrl$endpoint'), headers: headers),
+      (headers) => http.get(Uri.parse('$baseUrl$finalUrl'), headers: headers),
     );
   }
-
+  
   static Future<http.Response> post(String endpoint, dynamic data) async {
     return _requestWithRefresh(
       (headers) => http.post(
-        Uri.parse('$baseUrl$endpoint'),
+        Uri.parse('$baseUrl${endpoint.endsWith('/') ? endpoint : '$endpoint/'}'),
         headers: headers,
-        body: json.encode(data),
+        body: data != null ? json.encode(data) : null,
       ),
     );
   }
@@ -86,39 +90,52 @@ class ApiService {
   static Future<http.Response> put(String endpoint, dynamic data) async {
     return _requestWithRefresh(
       (headers) => http.put(
-        Uri.parse('$baseUrl$endpoint'),
+       Uri.parse('$baseUrl${endpoint.endsWith('/') ? endpoint : '$endpoint/'}'),
         headers: headers,
-        body: json.encode(data),
+        body: data != null ? json.encode(data) : null,
       ),
     );
   }
 
   static Future<http.Response> delete(String endpoint) async {
     return _requestWithRefresh(
-      (headers) => http.delete(Uri.parse('$baseUrl$endpoint'), headers: headers),
+      (headers) => http.delete(Uri.parse('$baseUrl${endpoint.endsWith('/') ? endpoint : '$endpoint/'}'), headers: headers),
     );
   }
 
-  static Future<http.Response> postMultipart(String endpoint, Map<String, String> data, String filePath) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('access_token');
+static Future<http.Response> postMultipart(
+  String endpoint, 
+  Map<String, String> data, 
+  String filePath
+) async {
+  // Define a local function that builds and sends the request
+  Future<http.Response> sendRequest(Map<String, String> headers) async {
+    final formattedEndpoint = endpoint.startsWith('/') ? endpoint : '/$endpoint';
+    final finalUrl = formattedEndpoint.endsWith('/') ? formattedEndpoint : '$formattedEndpoint/';
     
     var request = http.MultipartRequest(
       'POST',
-      Uri.parse('$baseUrl$endpoint'),
+      Uri.parse('$baseUrl$finalUrl'),
     );
     
-    request.headers['Authorization'] = 'Bearer $token';
+    // Attach the refreshed headers
+    request.headers.addAll(headers);
     
+    // Add text fields
     for (var entry in data.entries) {
       request.fields[entry.key] = entry.value;
     }
     
+    // Add the file
     if (filePath.isNotEmpty) {
       request.files.add(await http.MultipartFile.fromPath('receipt_image', filePath));
     }
     
-    var response = await request.send();
-    return http.Response.fromStream(response);
+    // Send and convert StreamedResponse to standard Response
+    var streamedResponse = await request.send();
+    return await http.Response.fromStream(streamedResponse);
   }
-}
+
+  // Use your existing logic to handle the 401 retry
+  return _requestWithRefresh((headers) => sendRequest(headers));
+}}
