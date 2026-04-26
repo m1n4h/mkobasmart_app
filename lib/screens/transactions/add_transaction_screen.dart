@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:mkobasmart_app/models/transaction_model.dart' show Transaction;
+import 'package:mkobasmart_app/provider/transaction_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:mkobasmart_app/provider/category_provider.dart';
 import 'package:mkobasmart_app/models/category_model.dart';
@@ -15,7 +18,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   final _formKey = GlobalKey<FormState>();
   final _amountController = TextEditingController();
   final _noteController = TextEditingController();
-  
+  String? _pickedImagePath;
   String _transactionType = 'expense'; // 'income' or 'expense'
   int? _selectedCategoryId;
 
@@ -151,11 +154,52 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       ),
     );
   }
+Future<void> _pickImage() async {
+  final ImagePicker picker = ImagePicker();
+  final XFile? image = await picker.pickImage(source: ImageSource.camera);
+  
+  if (image != null) {
+    setState(() => _pickedImagePath = image.path);
+  }
+}
 
-  void _submitTransaction() {
-    if (_formKey.currentState!.validate()) {
-      // Logic to call your TransactionProvider goes here
-      print("Type: $_transactionType, Category: $_selectedCategoryId, Amount: ${_amountController.text}");
+void _submitTransaction() async {
+  if (_formKey.currentState!.validate()) {
+    final transactionProvider = context.read<TransactionProvider>();
+    
+    final newTransaction = Transaction(
+      id: 0, 
+      amount: double.parse(_amountController.text),
+      transactionType: _transactionType,
+      categoryId: _selectedCategoryId!, // Use categoryId here
+      description: _noteController.text,
+      date: DateTime.now(),
+      // ADD THESE TWO LINES:
+      createdAt: DateTime.now(), 
+      updatedAt: DateTime.now(),
+    );
+
+    // Pass the picked image path if the user took a photo
+    final success = await transactionProvider.addTransaction(
+      newTransaction, 
+      receiptPath: _pickedImagePath,
+    );
+
+    if (mounted) {
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Record added successfully!'), backgroundColor: Colors.green),
+        );
+        Navigator.pop(context);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(transactionProvider.error ?? 'Failed to save'), 
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
+}
 }

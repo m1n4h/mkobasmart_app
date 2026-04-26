@@ -25,7 +25,7 @@ class Transaction {
     required this.date,
     this.receiptImage,
     required this.createdAt,
-    required this.updatedAt,
+    required this.updatedAt, 
   });
 
   factory Transaction.fromJson(Map<String, dynamic> json) {

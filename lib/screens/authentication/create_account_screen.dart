@@ -105,19 +105,23 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
         lastName: lastName,
       );
 
+      
       if (registered && mounted) {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setBool('is_logged_in', true);
-        await prefs.setBool('is_admin', authProvider.currentUser?.isAdmin ?? false);
-        await prefs.setBool('is_guest', authProvider.currentUser?.isGuest ?? false);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Account created successfully!')),
+          const SnackBar(
+            content: Text('Account created successfully! Please sign in.'),
+            backgroundColor: Colors.green,
+          ),
         );
+
+       
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => const DashboardScreen()),
+          MaterialPageRoute(builder: (_) => const AuthScreen()),
         );
+        
       } else if (mounted) {
+        // Handle failure
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(authProvider.error ?? 'Failed to create account')),
         );

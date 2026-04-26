@@ -23,13 +23,20 @@ class _TransactionsScreenState extends State<TransactionsScreen>
   final List<String> _filters = ['All', 'Today', 'This Week', 'This Month'];
   final TextEditingController _searchController = TextEditingController();
 
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-    _initialize();
-  }
-
+ @override
+void initState() {
+  super.initState();
+  _tabController = TabController(length: 2, vsync: this);
+  
+  // ADD THIS: Re-build the list when the tab changes
+  _tabController.addListener(() {
+    if (!_tabController.indexIsChanging) {
+      setState(() {}); 
+    }
+  });
+  
+  _initialize();
+}
   Future<void> _initialize() async {
     final ok = await AuthGuard.ensureAuthenticated(context);
     if (!ok) return;
@@ -593,17 +600,18 @@ const SizedBox(height: 16),
                     final provider = Provider.of<TransactionProvider>(this.context, listen: false);
                     final updated = Transaction(
                       id: transaction.id,
-                      transactionType: transaction.transactionType,
-                      categoryId: transaction.categoryId,
-                      categoryName: transaction.categoryName,
-                      categoryColor: transaction.categoryColor,
-                      categoryIcon: transaction.categoryIcon,
-                      amount: double.parse(amountController.text.trim()),
-                      description: descriptionController.text.trim(),
-                      date: selectedDate,
-                      receiptImage: transaction.receiptImage,
-                      createdAt: transaction.createdAt,
-                      updatedAt: DateTime.now(),
+  transactionType: transaction.transactionType,
+  categoryId: transaction.categoryId, // This maps to the backend 'category' ID
+  categoryName: transaction.categoryName,
+  categoryColor: transaction.categoryColor,
+  categoryIcon: transaction.categoryIcon,
+  amount: double.parse(amountController.text.trim()),
+  description: descriptionController.text.trim(),
+  date: selectedDate,
+  receiptImage: transaction.receiptImage,
+  createdAt: transaction.createdAt,
+  updatedAt: DateTime.now(),
+                      
                     );
 
                     final ok = await provider.updateTransaction(updated);
