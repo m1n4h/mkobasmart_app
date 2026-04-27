@@ -1,5 +1,6 @@
 // lib/screens/transactions/transactions_screen.dart
 import 'package:flutter/material.dart';
+import 'package:mkobasmart_app/provider/category_provider.dart';
 import 'package:mkobasmart_app/screens/category/category_list_screen.dart';
 import 'package:provider/provider.dart';
 import '../../widgets/animated_card.dart';
@@ -37,17 +38,21 @@ void initState() {
   
   _initialize();
 }
-  Future<void> _initialize() async {
-    final ok = await AuthGuard.ensureAuthenticated(context);
-    if (!ok) return;
-    await _loadTransactions();
-  }
 
-  Future<void> _loadTransactions() async {
-    final provider = Provider.of<TransactionProvider>(context, listen: false);
-    await provider.fetchTransactions();
-  }
-
+Future<void> _initialize() async {
+  final ok = await AuthGuard.ensureAuthenticated(context);
+  if (!ok) return;
+  
+  // Load both transactions and categories
+  final transProvider = Provider.of<TransactionProvider>(context, listen: false);
+  final catProvider = Provider.of<CategoryProvider>(context, listen: false);
+  
+  await Future.wait([
+    transProvider.fetchTransactions(),
+    catProvider.fetchCategories(),
+  ]);
+}
+  
   @override
   Widget build(BuildContext context) {
     final transactionProvider = Provider.of<TransactionProvider>(context);
@@ -248,7 +253,7 @@ const SizedBox(height: 16),
           Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => const AddTransactionScreen()),
-          ).then((_) => _loadTransactions());
+          ).then((_) => _initialize());
         },
         child: const Icon(Icons.add),
       ),

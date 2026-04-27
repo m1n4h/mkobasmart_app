@@ -22,15 +22,32 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   String _transactionType = 'expense'; // 'income' or 'expense'
   int? _selectedCategoryId;
 
+  
+@override
+void initState() {
+  super.initState();
+  // Fetch categories immediately so the dropdown isn't empty
+  Future.microtask(() {
+    Provider.of<CategoryProvider>(context, listen: false).fetchCategories();
+  });
+}
+
+
+
   @override
   Widget build(BuildContext context) {
     final categoryProvider = Provider.of<CategoryProvider>(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     // --- LOGIC: Filter categories based on transaction type selection ---
-    List<Category> filteredCategories = _transactionType == 'income'
-        ? categoryProvider.incomeCategories
-        : categoryProvider.expenseCategories;
+    // List<Category> filteredCategories = _transactionType == 'income'
+    //     ? categoryProvider.incomeCategories
+    //     : categoryProvider.expenseCategories;
+
+    // Inside build method of AddTransactionScreen
+List<Category> filteredCategories = categoryProvider.categories
+    .where((cat) => cat.categoryType.toLowerCase() == _transactionType.toLowerCase())
+    .toList();
 
     return Scaffold(
       appBar: const CustomHeader(title: "New Record", showBackButton: true),

@@ -161,6 +161,7 @@ class AuthViewSet(viewsets.GenericViewSet):
             'user': UserSerializer(request.user).data,
         })
 
+
 class TransactionViewSet(viewsets.ModelViewSet):
     serializer_class = TransactionSerializer
     permission_classes = [IsAuthenticated]

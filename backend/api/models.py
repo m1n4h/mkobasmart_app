@@ -66,6 +66,7 @@ class Transaction(models.Model):
     amount = models.DecimalField(max_digits=15, decimal_places=2)
     description = models.TextField(blank=True)
     date = models.DateTimeField()
+    
     receipt_image = models.ImageField(upload_to='receipts/', null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

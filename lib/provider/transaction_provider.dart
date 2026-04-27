@@ -21,21 +21,25 @@ class TransactionProvider extends ChangeNotifier {
   double get totalExpenses => _totalExpenses;
   double get netSavings => _totalIncome - _totalExpenses;
 
-  Future<void> fetchTransactions() async {
-    _setLoading(true);
-    try {
-      _transactions = await _transactionService.getTransactions();
-      _filteredTransactions = List.from(_transactions);
-      _calculateTotals();
-      _setLoading(false);
-      notifyListeners();
-    } catch (e) {
-      _error = e.toString();
-      _setLoading(false);
-      notifyListeners();
-    }
+Future<void> fetchTransactions() async {
+  _setLoading(true);
+  notifyListeners(); // Tells the UI to show the loading spinner
+  try {
+    _transactions = await _transactionService.getTransactions();
+    
+    // IMPORTANT: Initialize the filtered list with all transactions 
+    // so "All" tab shows data immediately.
+    _filteredTransactions = List.from(_transactions); 
+    
+    _calculateTotals();
+    _setLoading(false);
+    notifyListeners(); // Ensure UI updates
+  } catch (e) {
+    _error = e.toString();
+    _setLoading(false);
+    notifyListeners();
   }
-
+}
   Future<bool> addTransaction(Transaction transaction, {String? receiptPath}) async {
     _setLoading(true);
     try {
@@ -45,7 +49,8 @@ class TransactionProvider extends ChangeNotifier {
         _setLoading(false);
         return true;
       } else {
-        _error = result['error'];
+print("DEBUG SERVER ERROR: ${result['error']}");
+        _error = result['error'].toString();
         _setLoading(false);
         return false;
       }
@@ -167,4 +172,5 @@ class TransactionProvider extends ChangeNotifier {
     _error = null;
     notifyListeners();
   }
+  
 }

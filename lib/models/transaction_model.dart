@@ -49,10 +49,10 @@ class Transaction {
     return {
       'transaction_type': transactionType,
       'category': categoryId,
-      'amount': amount,
+      'amount': amount.toStringAsFixed(2),
       'description': description,
       'date': date.toIso8601String(),
-      if (receiptImage != null) 'receipt_image': receiptImage,
+      // if (receiptImage != null) 'receipt_image': receiptImage,
     };
   }
 }

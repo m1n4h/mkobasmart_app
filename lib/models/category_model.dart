@@ -20,7 +20,7 @@ class Category {
   return Category(
     id: json['id'] ?? 0,
     name: json['name'] ?? 'Unnamed',
-    categoryType: json['category_type'] ?? 'expense',
+    categoryType: (json['category_type'] as String).toLowerCase(),
     icon: json['icon'],
     color: (json['color'] != null && json['color'].toString().startsWith('#')) 
         ? json['color'] 
@@ -31,6 +31,7 @@ class Category {
 
   Map<String, dynamic> toJson() {
     return {
+      'id': id,
       'name': name,
       'category_type': categoryType,
       'icon': icon,
