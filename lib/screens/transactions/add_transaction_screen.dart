@@ -168,15 +168,11 @@ void _submitTransaction() async {
     final transactionProvider = context.read<TransactionProvider>();
     
     final newTransaction = Transaction(
-      id: 0, 
-      amount: double.parse(_amountController.text),
       transactionType: _transactionType,
-      categoryId: _selectedCategoryId!, // Use categoryId here
+      categoryId: _selectedCategoryId,
+      amount: double.parse(_amountController.text),
       description: _noteController.text,
       date: DateTime.now(),
-      // ADD THESE TWO LINES:
-      createdAt: DateTime.now(), 
-      updatedAt: DateTime.now(),
     );
 
     // Pass the picked image path if the user took a photo

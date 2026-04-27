@@ -1,6 +1,6 @@
 // lib/models/transaction_model.dart
 class Transaction {
-  final int id;
+  final int? id;
   final String transactionType;
   final int? categoryId;
   final String? categoryName;
@@ -10,11 +10,11 @@ class Transaction {
   final String description;
   final DateTime date;
   final String? receiptImage;
-  final DateTime createdAt;
-  final DateTime updatedAt;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
 
   Transaction({
-    required this.id,
+    this.id,
     required this.transactionType,
     this.categoryId,
     this.categoryName,
@@ -24,8 +24,8 @@ class Transaction {
     required this.description,
     required this.date,
     this.receiptImage,
-    required this.createdAt,
-    required this.updatedAt, 
+    this.createdAt,
+    this.updatedAt, 
   });
 
   factory Transaction.fromJson(Map<String, dynamic> json) {
@@ -40,8 +40,8 @@ class Transaction {
       description: json['description'] ?? '',
       date: DateTime.parse(json['date']),
       receiptImage: json['receipt_image'],
-      createdAt: DateTime.parse(json['created_at']),
-      updatedAt: DateTime.parse(json['updated_at']),
+      createdAt: json['created_at'] != null ? DateTime.parse(json['created_at']) : null,
+      updatedAt: json['updated_at'] != null ? DateTime.parse(json['updated_at']) : null,
     );
   }
 
@@ -52,7 +52,7 @@ class Transaction {
       'amount': amount,
       'description': description,
       'date': date.toIso8601String(),
-      'receipt_image': receiptImage,
+      if (receiptImage != null) 'receipt_image': receiptImage,
     };
   }
 }

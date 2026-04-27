@@ -17,11 +17,15 @@ DEBUG = config('DEBUG', default=True, cast=bool)
 
 ALLOWED_HOSTS = [
     '192.168.0.107',
+    
     '172.17.0.1',
     '172.18.0.1',
     '172.20.0.1',
     '172.21.0.1',
-    '172.19.0.1' 
+    '172.19.0.1' ,
+    '127.0.0.1',
+    'localhost', 
+    '10.0.2.2'
 
 ]
 
@@ -37,7 +41,8 @@ INSTALLED_APPS = [
     'corsheaders',
     'drf_yasg',
     'django_filters',
-    'api',
+    # 'api'
+    'api.apps.ApiConfig',
 ]
 
 MIDDLEWARE = [
@@ -118,6 +123,7 @@ CORS_ALLOW_CREDENTIALS = True
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'rest_framework.authentication.SessionAuthentication', # Allows Browser Login
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',

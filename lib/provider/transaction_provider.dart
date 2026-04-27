@@ -59,7 +59,7 @@ class TransactionProvider extends ChangeNotifier {
   Future<bool> updateTransaction(Transaction transaction) async {
     _setLoading(true);
     try {
-      final result = await _transactionService.updateTransaction(transaction.id, transaction);
+      final result = await _transactionService.updateTransaction(transaction.id!, transaction);
       if (result['success']) {
         await fetchTransactions();
         _setLoading(false);

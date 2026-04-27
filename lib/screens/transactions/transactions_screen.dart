@@ -515,7 +515,8 @@ const SizedBox(height: 16),
         false;
 
     if (!ok) return;
-    final deleted = await provider.deleteTransaction(transaction.id);
+    final deleted = await provider.deleteTransaction(transaction.id!);
+    
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(

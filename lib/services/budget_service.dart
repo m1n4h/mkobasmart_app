@@ -6,15 +6,39 @@ import 'api_service.dart';
 
 class BudgetService {
   String _extractError(dynamic body, {String fallback = 'Request failed'}) {
-    if (body is Map<String, dynamic>) {
-      final error = body['error'];
-      if (error is String && error.isNotEmpty) return error;
-      if (error is Map<String, dynamic>) {
-        final message = error['message']?.toString();
-        if (message != null && message.isNotEmpty) return message;
+    try {
+      if (body is String) {
+        final decoded = json.decode(body);
+        return _extractError(decoded, fallback: fallback);
       }
-      final message = body['message']?.toString();
-      if (message != null && message.isNotEmpty) return message;
+      
+      if (body is Map<String, dynamic>) {
+        // Check for 'error' key
+        final error = body['error'];
+        if (error is String && error.isNotEmpty) return error;
+        if (error is Map<String, dynamic>) {
+          final message = error['message']?.toString();
+          if (message != null && message.isNotEmpty) return message;
+          final details = error['details'];
+          if (details is Map<String, dynamic>) {
+            return details.entries
+                .map((e) => '${e.key}: ${e.value}')
+                .join(', ');
+          }
+        }
+        
+        // Check for direct 'message' key
+        final message = body['message']?.toString();
+        if (message != null && message.isNotEmpty) return message;
+        
+        // Check for field-specific errors
+        final nonFieldErrors = body['non_field_errors'];
+        if (nonFieldErrors is List && nonFieldErrors.isNotEmpty) {
+          return nonFieldErrors.first.toString();
+        }
+      }
+    } catch (e) {
+      // Silently handle parsing errors
     }
     return fallback;
   }
@@ -41,7 +65,10 @@ class BudgetService {
       }
       return {
         'success': false,
-        'error': _extractError(json.decode(response.body), fallback: 'Failed to create budget'),
+        'error': _extractError(
+          response.body.isNotEmpty ? json.decode(response.body) : null,
+          fallback: 'Failed to create budget'
+        ),
       };
     } catch (e) {
       return {'success': false, 'error': e.toString()};

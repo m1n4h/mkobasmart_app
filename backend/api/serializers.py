@@ -78,6 +78,47 @@ class TransactionCategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = TransactionCategory
         fields = ['id', 'name', 'category_type', 'icon', 'color', 'is_default']
+    
+    def validate_category_type(self, value):
+        """Validate category type"""
+        if value not in ['income', 'expense']:
+            raise serializers.ValidationError("Invalid category type. Must be 'income' or 'expense'.")
+        return value
+    
+    def validate(self, attrs):
+        """Check for duplicate categories per user"""
+        name = attrs.get('name')
+        category_type = attrs.get('category_type')
+        request = self.context.get('request')
+        
+        if not name:
+            raise serializers.ValidationError({
+                'name': 'Category name is required.'
+            })
+        
+        if not category_type:
+            raise serializers.ValidationError({
+                'category_type': 'Category type is required.'
+            })
+        
+        # Check for duplicate category with same name and type for this user
+        if request and request.user.is_authenticated:
+            existing = TransactionCategory.objects.filter(
+                user=request.user,
+                name=name,
+                category_type=category_type
+            )
+            
+            # Exclude the current instance if updating
+            if self.instance:
+                existing = existing.exclude(pk=self.instance.pk)
+            
+            if existing.exists():
+                raise serializers.ValidationError({
+                    'name': f'You already have a "{category_type}" category named "{name}".'
+                })
+        
+        return attrs
 
 class TransactionSerializer(serializers.ModelSerializer):
     category_name = serializers.CharField(source='category.name', read_only=True)
@@ -91,17 +132,43 @@ class TransactionSerializer(serializers.ModelSerializer):
                   'created_at', 'updated_at']
         read_only_fields = ['id', 'created_at', 'updated_at']
 
+    def validate_amount(self, value):
+        """Validate amount is positive"""
+        if value <= 0:
+            raise serializers.ValidationError("Amount must be greater than 0.")
+        return value
+    
+    def validate_transaction_type(self, value):
+        """Validate transaction type"""
+        if value not in ['income', 'expense', 'transfer']:
+            raise serializers.ValidationError("Invalid transaction type.")
+        return value
+
     def validate(self, attrs):
         category = attrs.get('category')
         transaction_type = attrs.get('transaction_type')
         request = self.context.get('request')
-
-        if category and transaction_type and category.category_type != transaction_type:
+        
+        # Validate that category is provided
+        if not category:
             raise serializers.ValidationError({
-                'category': 'Category type must match transaction type.'
+                'category': 'Category is required.'
+            })
+        
+        # Validate that transaction_type is provided
+        if not transaction_type:
+            raise serializers.ValidationError({
+                'transaction_type': 'Transaction type is required.'
             })
 
-        if category and request and request.user.is_authenticated:
+        # Check if category type matches transaction type
+        if category.category_type != transaction_type:
+            raise serializers.ValidationError({
+                'category': f'Category type ({category.category_type}) must match transaction type ({transaction_type}).'
+            })
+
+        # Verify user has access to this category
+        if request and request.user.is_authenticated:
             if category.user_id not in (None, request.user.id):
                 raise serializers.ValidationError({
                     'category': 'You can only use your own or default categories.'
@@ -119,6 +186,56 @@ class BudgetSerializer(serializers.ModelSerializer):
         model = Budget
         fields = ['id', 'category', 'category_name', 'amount', 'month', 'year', 
                   'spent_amount', 'remaining_amount', 'percentage_used', 'created_at']
+        read_only_fields = ['id', 'created_at']
+    
+    def validate_amount(self, value):
+        """Validate amount is positive"""
+        if value <= 0:
+            raise serializers.ValidationError("Budget amount must be greater than 0.")
+        return value
+    
+    def validate_month(self, value):
+        """Validate month is between 1 and 12"""
+        if not (1 <= value <= 12):
+            raise serializers.ValidationError("Month must be between 1 and 12.")
+        return value
+    
+    def validate_year(self, value):
+        """Validate year is valid"""
+        from datetime import datetime
+        if value < 2000 or value > datetime.now().year + 1:
+            raise serializers.ValidationError("Year must be valid.")
+        return value
+    
+    def validate(self, attrs):
+        """Check for duplicate budget"""
+        category = attrs.get('category')
+        month = attrs.get('month')
+        year = attrs.get('year')
+        
+        if not category:
+            raise serializers.ValidationError({
+                'category': 'Category is required.'
+            })
+        
+        # Check for existing budget for this category in the same month/year
+        existing = Budget.objects.filter(
+            user=self.context.get('request').user if self.context.get('request') else None,
+            category=category,
+            month=month,
+            year=year
+        )
+        
+        # Exclude the current instance if updating
+        if self.instance:
+            existing = existing.exclude(pk=self.instance.pk)
+        
+        if existing.exists():
+            raise serializers.ValidationError({
+                'category': f'A budget already exists for this category in {month}/{year}.'
+            })
+        
+        return attrs
     
     def get_spent_amount(self, obj):
         # Calculate total spent for this category in the given month/year

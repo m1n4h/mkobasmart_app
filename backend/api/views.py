@@ -162,7 +162,6 @@ class AuthViewSet(viewsets.GenericViewSet):
         })
 
 class TransactionViewSet(viewsets.ModelViewSet):
-    serializer_class = UserSerializer  # Add this at the top
     serializer_class = TransactionSerializer
     permission_classes = [IsAuthenticated]
     
@@ -294,7 +293,6 @@ class SavingsGoalViewSet(viewsets.ModelViewSet):
         return Response(SavingsGoalSerializer(goal).data)
 
 class DashboardViewSet(viewsets.GenericViewSet):
-    serializer_class = UserSerializer  # Add this at the top
     permission_classes = [IsAuthenticated]
     
     @action(detail=False, methods=['get'])

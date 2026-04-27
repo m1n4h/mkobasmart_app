@@ -1,8 +1,45 @@
-import 'dart:convert';
+  import 'dart:convert';
 import '../models/category_model.dart';
 import 'api_service.dart';
-
-class CategoryService {
+  class CategoryService { // <--- ADD THIS LINE
+  String _extractError(dynamic body, {String fallback = 'Request failed'}) {
+    try {
+      if (body is String) {
+        final decoded = json.decode(body);
+        return _extractError(decoded, fallback: fallback);
+      }
+      
+      if (body is Map<String, dynamic>) {
+        // Check for 'error' key
+        final error = body['error'];
+        if (error is String && error.isNotEmpty) return error;
+        if (error is Map<String, dynamic>) {
+          final message = error['message']?.toString();
+          if (message != null && message.isNotEmpty) return message;
+          final details = error['details'];
+          if (details is Map<String, dynamic>) {
+            return details.entries
+                .map((e) => '${e.key}: ${e.value}')
+                .join(', ');
+          }
+        }
+        
+        // Check for direct 'message' key
+        final message = body['message']?.toString();
+        if (message != null && message.isNotEmpty) return message;
+        
+        // Check for field-specific errors
+        final nonFieldErrors = body['non_field_errors'];
+        if (nonFieldErrors is List && nonFieldErrors.isNotEmpty) {
+          return nonFieldErrors.first.toString();
+        }
+      }
+    } catch (e) {
+      // Silently handle parsing errors
+    }
+    return fallback;
+  }
+  
   // 1. GET ALL
   Future<List<Category>> getCategories() async {
     try {
@@ -27,13 +64,19 @@ class CategoryService {
   }
   
   // 2. CREATE
-  Future<Map<String, dynamic>> createCategory(Category category) async {
+Future<Map<String, dynamic>> createCategory(Category category) async {
     try {
       final response = await ApiService.post('/categories/', category.toJson());
       if (response.statusCode == 201) {
         return {'success': true, 'data': json.decode(response.body)};
       }
-      return {'success': false, 'error': 'Failed to create category'};
+      return {
+        'success': false,
+        'error': _extractError(
+          response.body.isNotEmpty ? json.decode(response.body) : null,
+          fallback: 'Failed to create category'
+        )
+      };
     } catch (e) {
       return {'success': false, 'error': e.toString()};
     }
@@ -64,4 +107,4 @@ class CategoryService {
       return false;
     }
   }
-} // End of class
+ }// End of class

@@ -44,7 +44,7 @@ class _DebtsScreenState extends State<DebtsScreen>
     DateTime dueDate = DateTime.now().add(const Duration(days: 30));
     String debtType = 'loan';
     bool isOwedToMe = true;
-    
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -93,11 +93,12 @@ class _DebtsScreenState extends State<DebtsScreen>
                         style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                       ),
                       const SizedBox(height: 20),
-                      
+
                       // Debt Type Toggle
                       SegmentedButton<String>(
                         segments: const [
-                          ButtonSegment(value: 'owed_to_me', label: Text('Owed to Me')),
+                          ButtonSegment(
+                              value: 'owed_to_me', label: Text('Owed to Me')),
                           ButtonSegment(value: 'i_owe', label: Text('I Owe')),
                         ],
                         selected: {isOwedToMe ? 'owed_to_me' : 'i_owe'},
@@ -108,7 +109,7 @@ class _DebtsScreenState extends State<DebtsScreen>
                         },
                       ),
                       const SizedBox(height: 16),
-                      
+
                       // Title
                       TextFormField(
                         decoration: InputDecoration(
@@ -127,7 +128,7 @@ class _DebtsScreenState extends State<DebtsScreen>
                         onSaved: (value) => title = value!,
                       ),
                       const SizedBox(height: 16),
-                      
+
                       // Description
                       TextFormField(
                         decoration: InputDecoration(
@@ -141,7 +142,7 @@ class _DebtsScreenState extends State<DebtsScreen>
                         onSaved: (value) => description = value ?? '',
                       ),
                       const SizedBox(height: 16),
-                      
+
                       // Total Amount
                       TextFormField(
                         decoration: InputDecoration(
@@ -161,7 +162,7 @@ class _DebtsScreenState extends State<DebtsScreen>
                         onSaved: (value) => totalAmount = double.parse(value!),
                       ),
                       const SizedBox(height: 16),
-                      
+
                       // Debt Type
                       DropdownButtonFormField<String>(
                         decoration: InputDecoration(
@@ -174,8 +175,10 @@ class _DebtsScreenState extends State<DebtsScreen>
                         value: debtType,
                         items: const [
                           DropdownMenuItem(value: 'loan', child: Text('Loan')),
-                          DropdownMenuItem(value: 'credit_card', child: Text('Credit Card')),
-                          DropdownMenuItem(value: 'other', child: Text('Other')),
+                          DropdownMenuItem(
+                              value: 'credit_card', child: Text('Credit Card')),
+                          DropdownMenuItem(
+                              value: 'other', child: Text('Other')),
                         ],
                         onChanged: (value) {
                           setState(() {
@@ -184,7 +187,7 @@ class _DebtsScreenState extends State<DebtsScreen>
                         },
                       ),
                       const SizedBox(height: 16),
-                      
+
                       // Due Date
                       ListTile(
                         leading: const Icon(Icons.calendar_today),
@@ -196,7 +199,8 @@ class _DebtsScreenState extends State<DebtsScreen>
                             context: context,
                             initialDate: dueDate,
                             firstDate: DateTime.now(),
-                            lastDate: DateTime.now().add(const Duration(days: 365)),
+                            lastDate:
+                                DateTime.now().add(const Duration(days: 365)),
                           );
                           if (picked != null) {
                             setState(() {
@@ -206,14 +210,15 @@ class _DebtsScreenState extends State<DebtsScreen>
                         },
                       ),
                       const SizedBox(height: 24),
-                      
+
                       Row(
                         children: [
                           Expanded(
                             child: OutlinedButton(
                               onPressed: () => Navigator.pop(context),
                               style: OutlinedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 12),
                               ),
                               child: Text('Cancel'.tr(context)),
                             ),
@@ -225,24 +230,25 @@ class _DebtsScreenState extends State<DebtsScreen>
                                 if (_formKey.currentState!.validate()) {
                                   _formKey.currentState!.save();
                                   _saveDebt(
-                                     id: 0,
-      counterpartyName: title,
-      debtType: debtType,
-      isOwedToMe: isOwedToMe,
-      totalAmount: totalAmount,
-      remainingAmount: totalAmount,
-      description: description,
-      dueDate: dueDate,
-      status: 'pending',
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
-      title: title,
+                                    id: 0,
+                                    counterpartyName: title,
+                                    debtType: debtType,
+                                    isOwedToMe: isOwedToMe,
+                                    totalAmount: totalAmount,
+                                    remainingAmount: totalAmount,
+                                    description: description,
+                                    dueDate: dueDate,
+                                    status: 'pending',
+                                    createdAt: DateTime.now(),
+                                    updatedAt: DateTime.now(),
+                                    title: title,
                                   );
                                   Navigator.pop(context);
                                 }
                               },
                               style: ElevatedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 12),
                               ),
                               child: Text('Save'.tr(context)),
                             ),
@@ -262,18 +268,18 @@ class _DebtsScreenState extends State<DebtsScreen>
   }
 
   Future<void> _saveDebt({
-  required int id,
-  required String counterpartyName,
-  required String debtType,
-  required bool isOwedToMe,
-  required double totalAmount,
-  required double remainingAmount,
-  required String description,
-  required DateTime dueDate,
-  required String status,
-  required DateTime createdAt,
-  required DateTime updatedAt,
-  required String title,
+    required int id,
+    required String counterpartyName,
+    required String debtType,
+    required bool isOwedToMe,
+    required double totalAmount,
+    required double remainingAmount,
+    required String description,
+    required DateTime dueDate,
+    required String status,
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    required String title,
   }) async {
     final debt = Debt(
       id: id,
@@ -285,13 +291,13 @@ class _DebtsScreenState extends State<DebtsScreen>
       description: description,
       dueDate: dueDate,
       status: 'pending',
-       createdAt: DateTime.now(),
-    updatedAt: DateTime.now(),
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
     );
-    
+
     final provider = Provider.of<DebtProvider>(context, listen: false);
     final success = await provider.addDebt(debt);
-    
+
     if (success && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Debt added successfully!')),
@@ -307,7 +313,7 @@ class _DebtsScreenState extends State<DebtsScreen>
   void _showMakePaymentDialog(Debt debt) {
     final _formKey = GlobalKey<FormState>();
     double amount = 0;
-    
+
     showDialog(
       context: context,
       builder: (context) {
@@ -318,7 +324,8 @@ class _DebtsScreenState extends State<DebtsScreen>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text('Remaining: TSh ${debt.remainingAmount.toStringAsFixed(0)}'),
+                Text(
+                    'Remaining: TSh ${debt.remainingAmount.toStringAsFixed(0)}'),
                 const SizedBox(height: 16),
                 TextFormField(
                   decoration: InputDecoration(
@@ -357,18 +364,22 @@ class _DebtsScreenState extends State<DebtsScreen>
                 if (_formKey.currentState!.validate()) {
                   _formKey.currentState!.save();
                   Navigator.pop(context);
-                  
-                  final provider = Provider.of<DebtProvider>(context, listen: false);
+
+                  final provider =
+                      Provider.of<DebtProvider>(context, listen: false);
                   final success = await provider.makePayment(debt.id, amount);
-                  
+
                   if (success && mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Payment recorded successfully!')),
+                      const SnackBar(
+                          content: Text('Payment recorded successfully!')),
                     );
                     _loadDebts();
                   } else if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(provider.error ?? 'Failed to record payment')),
+                      SnackBar(
+                          content: Text(
+                              provider.error ?? 'Failed to record payment')),
                     );
                   }
                 }
@@ -384,7 +395,7 @@ class _DebtsScreenState extends State<DebtsScreen>
   @override
   Widget build(BuildContext context) {
     final debtProvider = Provider.of<DebtProvider>(context);
-    
+
     return Scaffold(
       body: SingleChildScrollView(
         child: Column(
@@ -416,7 +427,7 @@ class _DebtsScreenState extends State<DebtsScreen>
                 ],
               ),
             ),
-            
+
             // Tab Selector
             AnimatedCard(
               delay: 50,
@@ -441,7 +452,7 @@ class _DebtsScreenState extends State<DebtsScreen>
                 ),
               ),
             ),
-            
+
             // Debt List
             AnimatedCard(
               delay: 100,
@@ -449,7 +460,8 @@ class _DebtsScreenState extends State<DebtsScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -468,7 +480,6 @@ class _DebtsScreenState extends State<DebtsScreen>
                       ],
                     ),
                   ),
-                  
                   debtProvider.isLoading
                       ? const Center(child: CircularProgressIndicator())
                       : ListView.builder(
@@ -487,7 +498,7 @@ class _DebtsScreenState extends State<DebtsScreen>
                 ],
               ),
             ),
-            
+
             // Debt Health Card (derived from backend totals)
             AnimatedCard(
               delay: 200,
@@ -504,11 +515,14 @@ class _DebtsScreenState extends State<DebtsScreen>
                     children: [
                       Row(
                         children: [
-                          const Icon(Icons.health_and_safety, color: Colors.white),
+                          const Icon(Icons.health_and_safety,
+                              color: Colors.white),
                           const SizedBox(width: 8),
                           const Text(
                             'Debt-to-Income Health',
-                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold),
                           ),
                         ],
                       ),
@@ -523,9 +537,11 @@ class _DebtsScreenState extends State<DebtsScreen>
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('Trust Score', style: TextStyle(color: Colors.white)),
+                          const Text('Trust Score',
+                              style: TextStyle(color: Colors.white)),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 4),
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(20),
@@ -560,7 +576,8 @@ class _DebtsScreenState extends State<DebtsScreen>
     );
   }
 
-  Widget _buildSummaryCard(String title, String amount, String subtitle, IconData icon, Color color) {
+  Widget _buildSummaryCard(String title, String amount, String subtitle,
+      IconData icon, Color color) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -581,22 +598,26 @@ class _DebtsScreenState extends State<DebtsScreen>
             ],
           ),
           const SizedBox(height: 8),
-          Text(amount, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: color)),
+          Text(amount,
+              style: TextStyle(
+                  fontSize: 18, fontWeight: FontWeight.bold, color: color)),
           const SizedBox(height: 4),
-          Text(subtitle, style: TextStyle(fontSize: 10, color: color.withOpacity(0.7))),
+          Text(subtitle,
+              style: TextStyle(fontSize: 10, color: color.withOpacity(0.7))),
         ],
       ),
     );
   }
 
   Widget _buildDebtItem(Debt debt) {
-    final isOverdue = debt.dueDate.isBefore(DateTime.now()) && debt.status != 'paid';
+    final isOverdue =
+        debt.dueDate.isBefore(DateTime.now()) && debt.status != 'paid';
     final statusColor = debt.status == 'paid'
         ? Colors.green
         : isOverdue
             ? Colors.red
             : Colors.orange;
-    
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Container(
@@ -613,7 +634,9 @@ class _DebtsScreenState extends State<DebtsScreen>
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
-              debt.debtType == 'loan' ? Icons.account_balance : Icons.credit_card,
+              debt.debtType == 'loan'
+                  ? Icons.account_balance
+                  : Icons.credit_card,
               color: statusColor,
             ),
           ),
@@ -626,11 +649,14 @@ class _DebtsScreenState extends State<DebtsScreen>
             children: [
               Text(
                 'Due: ${_formatDate(debt.dueDate)}',
-                style: TextStyle(fontSize: 12, color: isOverdue ? Colors.red : Colors.grey[600]),
+                style: TextStyle(
+                    fontSize: 12,
+                    color: isOverdue ? Colors.red : Colors.grey[600]),
               ),
               const SizedBox(height: 4),
               LinearProgressIndicator(
-                value: (debt.totalAmount - debt.remainingAmount) / debt.totalAmount,
+                value: (debt.totalAmount - debt.remainingAmount) /
+                    debt.totalAmount,
                 backgroundColor: Colors.grey[300],
                 color: statusColor,
                 borderRadius: BorderRadius.circular(10),
@@ -654,7 +680,11 @@ class _DebtsScreenState extends State<DebtsScreen>
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  debt.status == 'paid' ? 'Paid' : isOverdue ? 'Overdue' : debt.status,
+                  debt.status == 'paid'
+                      ? 'Paid'
+                      : isOverdue
+                          ? 'Overdue'
+                          : debt.status,
                   style: TextStyle(fontSize: 10, color: statusColor),
                 ),
               ),
