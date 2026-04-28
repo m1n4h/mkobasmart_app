@@ -146,7 +146,7 @@ class TransactionSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         category = attrs.get('category')
-        transaction_type = attrs.get('transaction_type')
+        transaction_type = attrs.get('transaction_type', '').lower()
         request = self.context.get('request')
         
         # Validate that category is provided

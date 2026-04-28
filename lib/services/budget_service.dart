@@ -42,21 +42,32 @@ class BudgetService {
     }
     return fallback;
   }
+Future<List<Budget>> getBudgets() async {
+  try {
+    final response = await ApiService.get('/budgets/');
+    
+    if (response.statusCode == 200) {
+      final dynamic decodedData = json.decode(response.body);
+      
+      List<dynamic> listData;
 
-  Future<List<Budget>> getBudgets() async {
-    try {
-      final response = await ApiService.get('/budgets/');
-      if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body);
-        return data.map((json) => Budget.fromJson(json)).toList();
+      // Handle the 'results' envelope from Django
+      if (decodedData is Map<String, dynamic> && decodedData.containsKey('results')) {
+        listData = decodedData['results'];
+      } else if (decodedData is List) {
+        listData = decodedData;
+      } else {
+        return [];
       }
-      return [];
-    } catch (e) {
-      print('Error fetching budgets: $e');
-      return [];
-    }
-  }
 
+      return listData.map((item) => Budget.fromJson(item)).toList();
+    }
+    return [];
+  } catch (e) {
+    print('Error fetching budgets: $e');
+    return [];
+  }
+}
   Future<Map<String, dynamic>> createBudget(Budget budget) async {
     try {
       final response = await ApiService.post('/budgets/', budget.toJson());

@@ -42,7 +42,7 @@ class Budget {
   Map<String, dynamic> toJson() {
     return {
       'category': categoryId,
-      'amount': amount,
+      'amount': amount.toStringAsFixed(2),
       'month': month,
       'year': year,
     };

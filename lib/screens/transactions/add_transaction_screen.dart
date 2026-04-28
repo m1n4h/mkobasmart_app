@@ -102,7 +102,8 @@ List<Category> filteredCategories = categoryProvider.categories
                 items: filteredCategories.map((cat) {
                   return DropdownMenuItem(
                     value: cat.id,
-                    child: Text(cat.name),
+                   // Inside DropdownMenuItem
+child: Text("${cat.name} (ID: ${cat.id} - ${cat.categoryType})"),
                   );
                 }).toList(),
                 onChanged: (val) => setState(() => _selectedCategoryId = val),

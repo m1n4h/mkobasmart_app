@@ -320,6 +320,7 @@ const SizedBox(height: 16),
       itemBuilder: (context, index) {
         final transaction = transactions[index];
         final isExpense = transaction.transactionType == 'expense';
+        
         return AnimatedCard(
           delay: index * 50,
           child: ListTile(

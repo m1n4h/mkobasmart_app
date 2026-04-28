@@ -19,11 +19,19 @@ class _DebtsScreenState extends State<DebtsScreen>
   late TabController _tabController;
 
   @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-    _initialize();
-  }
+void initState() {
+  super.initState();
+  _tabController = TabController(length: 2, vsync: this);
+  
+  // Add this listener to force the UI to update when the tab changes
+  _tabController.addListener(() {
+    if (!_tabController.indexIsChanging) {
+      setState(() {}); 
+    }
+  });
+
+  _initialize();
+}
 
   Future<void> _initialize() async {
     final ok = await AuthGuard.ensureAuthenticated(context);
@@ -224,35 +232,38 @@ class _DebtsScreenState extends State<DebtsScreen>
                             ),
                           ),
                           const SizedBox(width: 12),
-                          Expanded(
-                            child: ElevatedButton(
-                              onPressed: () {
-                                if (_formKey.currentState!.validate()) {
-                                  _formKey.currentState!.save();
-                                  _saveDebt(
-                                    id: 0,
-                                    counterpartyName: title,
-                                    debtType: debtType,
-                                    isOwedToMe: isOwedToMe,
-                                    totalAmount: totalAmount,
-                                    remainingAmount: totalAmount,
-                                    description: description,
-                                    dueDate: dueDate,
-                                    status: 'pending',
-                                    createdAt: DateTime.now(),
-                                    updatedAt: DateTime.now(),
-                                    title: title,
-                                  );
-                                  Navigator.pop(context);
-                                }
-                              },
-                              style: ElevatedButton.styleFrom(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 12),
-                              ),
-                              child: Text('Save'.tr(context)),
-                            ),
-                          ),
+                         
+                         ElevatedButton(
+  onPressed: () async { // Make this async
+    if (_formKey.currentState!.validate()) {
+      _formKey.currentState!.save();
+      
+      final newDebt = Debt(
+        id: 0,
+        counterpartyName: title, // This maps to 'title' in your form
+        debtType: debtType,
+        isOwedToMe: isOwedToMe,
+        totalAmount: totalAmount,
+        remainingAmount: totalAmount,
+        description: description,
+        dueDate: dueDate,
+        status: 'pending',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      final success = await Provider.of<DebtProvider>(context, listen: false).addDebt(newDebt);
+
+      if (success) {
+        if (mounted) Navigator.pop(context);
+        // The provider's addDebt already calls fetchDebts(), 
+        // so the Consumer will handle the update.
+      }
+    }
+  },
+  child: Text('Save'.tr(context)),
+),
+
                         ],
                       ),
                       const SizedBox(height: 20),
@@ -480,21 +491,33 @@ class _DebtsScreenState extends State<DebtsScreen>
                       ],
                     ),
                   ),
-                  debtProvider.isLoading
-                      ? const Center(child: CircularProgressIndicator())
-                      : ListView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: _tabController.index == 0
-                              ? debtProvider.debtsOwedToMe.length
-                              : debtProvider.debtsIOwe.length,
-                          itemBuilder: (context, index) {
-                            final debt = _tabController.index == 0
-                                ? debtProvider.debtsOwedToMe[index]
-                                : debtProvider.debtsIOwe[index];
-                            return _buildDebtItem(debt);
-                          },
-                        ),
+                  // Use a Consumer to listen to DebtProvider changes
+Consumer<DebtProvider>(
+  builder: (context, provider, child) {
+    // Determine the list based on the current tab index
+    final displayList = _tabController.index == 0
+        ? provider.debtsOwedToMe
+        : provider.debtsIOwe;
+
+    if (displayList.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(20.0),
+          child: Text("No debt records found in this category"),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: displayList.length,
+      itemBuilder: (context, index) {
+        return _buildDebtItem(displayList[index]);
+      },
+    );
+  },
+),
                 ],
               ),
             ),

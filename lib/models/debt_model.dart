@@ -42,15 +42,16 @@ class Debt {
       updatedAt: DateTime.parse(json['updated_at']),
     );
   }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'counterparty_name': counterpartyName,
-      'debt_type': debtType,
-      'is_owed_to_me': isOwedToMe,
-      'total_amount': totalAmount,
-      'description': description,
-      'due_date': dueDate.toIso8601String(),
-    };
-  }
+Map<String, dynamic> toJson() {
+  return {
+    'counterparty_name': counterpartyName,
+    'debt_type': debtType.toLowerCase(),
+    'is_owed_to_me': isOwedToMe,
+    'total_amount': totalAmount.toStringAsFixed(2),
+    'remaining_amount': totalAmount.toStringAsFixed(2), // Most serializers require this for creation
+    'description': description,
+    'due_date': dueDate.toIso8601String().split('T')[0], // Backend DateField (YYYY-MM-DD)
+    'status': 'pending', 
+  };
+}
 }

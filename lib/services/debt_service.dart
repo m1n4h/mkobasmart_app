@@ -43,20 +43,37 @@ class DebtService {
     return fallback;
   }
 
-  Future<List<Debt>> getDebts() async {
-    try {
-      final response = await ApiService.get('/debts/');
-      if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body);
-        return data.map((json) => Debt.fromJson(json)).toList();
-      }
-      return [];
-    } catch (e) {
-      print('Error fetching debts: $e');
-      return [];
-    }
-  }
+ Future<List<Debt>> getDebts() async {
+  try {
+    final response = await ApiService.get('/debts/');
+    
+    if (response.statusCode == 200) {
+      final dynamic decodedData = json.decode(response.body);
+      
+      List<dynamic> listData;
 
+      // 1. Handle Django Pagination (the 'results' key)
+      if (decodedData is Map<String, dynamic> && decodedData.containsKey('results')) {
+        listData = decodedData['results'];
+      } 
+      // 2. Handle simple List response
+      else if (decodedData is List) {
+        listData = decodedData;
+      } 
+      else {
+        print('Unexpected JSON structure for debts: $decodedData');
+        return [];
+      }
+
+      // 3. Convert JSON items to Debt objects
+      return listData.map((item) => Debt.fromJson(item)).toList();
+    }
+    return [];
+  } catch (e) {
+    print('Error fetching debts: $e'); // This is catching your current error
+    return [];
+  }
+}
   Future<Map<String, dynamic>> createDebt(Debt debt) async {
     try {
       final response = await ApiService.post('/debts/', debt.toJson());

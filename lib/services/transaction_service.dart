@@ -42,20 +42,36 @@ class TransactionService {
     return fallback;
   }
 
-  Future<List<Transaction>> getTransactions() async {
-    try {
-      final response = await ApiService.get('/transactions/');
-      if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body);
-        return data.map((json) => Transaction.fromJson(json)).toList();
-      }
-      return [];
-    } catch (e) {
-      print('Error fetching transactions: $e');
-      return [];
-    }
-  }
+Future<List<Transaction>> getTransactions() async {
+  try {
+    final response = await ApiService.get('/transactions/');
+    
+    if (response.statusCode == 200) {
+      // 1. Decode as dynamic first, because we don't know if it's a Map or List yet
+      final dynamic decodedData = json.decode(response.body);
+      
+      List<dynamic> listData;
 
+      // 2. Check if it's a Paginated Map (has 'results' key) or a simple List
+      if (decodedData is Map<String, dynamic> && decodedData.containsKey('results')) {
+        listData = decodedData['results']; 
+      } else if (decodedData is List) {
+        listData = decodedData;
+      } else {
+        print('Unexpected JSON structure: $decodedData');
+        return [];
+      }
+
+      // 3. Map the list to your Transaction objects
+      return listData.map((item) => Transaction.fromJson(item)).toList();
+    }
+    return [];
+  } catch (e) {
+    // This is where your current error is being caught
+    print('Error fetching transactions: $e'); 
+    return [];
+  }
+}
   Future<Map<String, dynamic>> createTransaction(Transaction transaction, {String? receiptPath}) async {
     try {
       String? responseBody;
