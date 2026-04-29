@@ -198,7 +198,7 @@ class _MoreScreenState extends State<MoreScreen> {
   }
 
  Widget _buildSettingsTile({
-  required BuildContext context, // ✅ ADD THIS
+  required BuildContext context,
   required IconData icon,
   required String title,
   required VoidCallback onTap,

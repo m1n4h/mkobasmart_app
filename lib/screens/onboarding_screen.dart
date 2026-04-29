@@ -18,19 +18,19 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   final List<OnboardingData> _pages = [
     OnboardingData(
-      icon: Icons.account_balance_wallet,
+      imagePath: 'assets/images/image1.jpg',
       titleKey: 'onboarding_title_1',
       descriptionKey: 'onboarding_desc_1',
       color: Colors.green,
     ),
     OnboardingData(
-      icon: Icons.insights,
+      imagePath: 'assets/images/image3.jpeg',
       titleKey: 'onboarding_title_2',
       descriptionKey: 'onboarding_desc_2',
       color: Colors.blue,
     ),
     OnboardingData(
-      icon: Icons.control_point,
+      imagePath: 'assets/images/image2.webp',
       titleKey: 'onboarding_title_3',
       descriptionKey: 'onboarding_desc_3',
       color: Colors.orange,
@@ -79,52 +79,52 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   },
                   itemCount: _pages.length,
                   itemBuilder: (context, index) {
-                    return AnimatedCard(
-                      delay: 100 * index,
-                      child: Padding(
-                        padding: const EdgeInsets.all(32),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(24),
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    _pages[index].color.withOpacity(0.2),
-                                    _pages[index].color.withOpacity(0.1),
-                                  ],
-                                ),
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                _pages[index].icon,
-                                size: 80,
-                                color: _pages[index].color,
-                              ),
-                            ),
-                            const SizedBox(height: 40),
-                            Text(
-                              _pages[index].titleKey.tr(context),
-                              style: const TextStyle(
-                                fontSize: 28,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 20),
-                            Text(
-                              _pages[index].descriptionKey.tr(context),
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: Colors.grey[600],
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
+                   // Inside PageView.builder -> itemBuilder
+return AnimatedCard(
+  delay: 100 * index,
+  child: Padding(
+    padding: const EdgeInsets.all(32),
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        // Image Container
+        Container(
+          height: 255, // Give the image a fixed height
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: _pages[index].color.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Image.asset(
+              _pages[index].imagePath,
+              fit: BoxFit.contain, // Ensures the image isn't distorted
+            ),
+          ),
+        ),
+        const SizedBox(height: 40),
+        Text(
+          _pages[index].titleKey.tr(context),
+          style: const TextStyle(
+            fontSize: 28,
+            fontWeight: FontWeight.bold,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 20),
+        Text(
+          _pages[index].descriptionKey.tr(context),
+          style: TextStyle(
+            fontSize: 16,
+            color: Colors.grey[600],
+          ),
+          textAlign: TextAlign.center,
+        ),
+      ],
+    ),
+  ),
+);
                   },
                 ),
               ),
@@ -207,13 +207,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 }
 
 class OnboardingData {
-  final IconData icon;
+  final String imagePath; // Changed from IconData icon
   final String titleKey;
   final String descriptionKey;
   final Color color;
 
   OnboardingData({
-    required this.icon,
+    required this.imagePath,
     required this.titleKey,
     required this.descriptionKey,
     required this.color,
