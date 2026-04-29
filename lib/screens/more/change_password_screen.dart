@@ -1,5 +1,7 @@
+// lib/screens/more/change_password_screen.dart
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
+import '../authentication/auth_screen.dart'; // Make sure this path is correct
 
 class ChangePasswordScreen extends StatefulWidget {
   const ChangePasswordScreen({super.key});
@@ -11,19 +13,47 @@ class ChangePasswordScreen extends StatefulWidget {
 class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   final _passController = TextEditingController();
   final _repeatPassController = TextEditingController();
+  bool _isLoading = false;
   bool _obscure = true;
 
   Future<void> _updatePassword() async {
+    // 1. Validation
+    if (_passController.text.isEmpty) {
+      _showSnackBar('Please enter a new password');
+      return;
+    }
     if (_passController.text != _repeatPassController.text) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Passwords do not match')));
+      _showSnackBar('Passwords do not match');
       return;
     }
 
+    setState(() => _isLoading = true);
+
+    // 2. Call Service
     final result = await AuthService().changePassword(_passController.text);
+
+    setState(() => _isLoading = false);
+
     if (result['success']) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Password changed successfully')));
-      Navigator.pop(context);
+      if (!mounted) return;
+
+      _showSnackBar('Password changed! Please login again with your new password.');
+
+      // 3. Force Logout & Redirect
+      await AuthService().logout(); // Clears tokens/prefs
+
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const AuthScreen()),
+        (route) => false, // Clears the entire navigation stack
+      );
+    } else {
+      _showSnackBar('Failed to update password. Check your connection.');
     }
+  }
+
+  void _showSnackBar(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
   @override
@@ -38,10 +68,15 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
             const SizedBox(height: 16),
             _buildPassField('Repeat Password', _repeatPassController),
             const Spacer(),
-            ElevatedButton(
-              onPressed: _updatePassword,
-              style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 50)),
-              child: const Text('Update Password'),
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                onPressed: _isLoading ? null : _updatePassword,
+                child: _isLoading 
+                  ? const CircularProgressIndicator(color: Colors.white) 
+                  : const Text('Update Password'),
+              ),
             ),
           ],
         ),

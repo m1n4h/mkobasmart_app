@@ -185,6 +185,8 @@ Future<Map<String, dynamic>> googleLogin({required String email, required String
       return {'success': false, 'error': e.toString()};
     }
   }
+  // update profile user 
+  
   // Add these to your existing AuthService class
 Future<Map<String, dynamic>> updateProfile({String? name, String? email, String? imagePath}) async {
   try {
@@ -200,6 +202,7 @@ Future<Map<String, dynamic>> updateProfile({String? name, String? email, String?
   }
 }
 
+// change the password
 Future<Map<String, dynamic>> changePassword(String newPassword) async {
   try {
     final response = await ApiService.post('/auth/password/change/', {

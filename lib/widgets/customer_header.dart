@@ -111,23 +111,6 @@ class CustomHeader extends StatelessWidget implements PreferredSizeWidget {
                   ),
                 ),
               ),
-              if (actions != null) ...actions!,
-              if (onMenuTap != null)
-                GestureDetector(
-                  onTap: onMenuTap,
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: isDark ? Colors.grey[800] : Colors.grey[100],
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(
-                      Icons.menu,
-                      size: 20,
-                      color: Theme.of(context).primaryColor,
-                    ),
-                  ),
-                ),
             ],
           ),
         ),

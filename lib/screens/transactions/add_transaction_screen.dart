@@ -50,7 +50,7 @@ List<Category> filteredCategories = categoryProvider.categories
     .toList();
 
     return Scaffold(
-      appBar: const CustomHeader(title: "New Record", showBackButton: true),
+      appBar: const CustomHeader(title: "New Transaction", showBackButton: true),
       backgroundColor: isDark ? const Color(0xFF121212) : Colors.grey[50],
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),

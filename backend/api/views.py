@@ -115,6 +115,55 @@ class AuthViewSet(viewsets.GenericViewSet):
             'access': str(refresh.access_token),
         })
 
+
+
+    @action(detail=False, methods=['post'], url_path='password/change')
+    def change_password(self, request):
+        user = request.user
+        new_password = request.data.get('new_password')
+
+        if not new_password:
+            return Response({'error': 'New password is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Update the user's password
+        user.set_password(new_password)
+        user.save()
+
+        return Response({'message': 'Password updated successfully'}, status=status.HTTP_200_OK)
+  
+  # update the profile 
+  
+  
+    @action(detail=False, methods=['put', 'patch'], url_path='profile/update')
+    def update_profile(self, request):
+        user = request.user
+        # Get data from the request
+        full_name = request.data.get('full_name')
+        email = request.data.get('email')
+        phone = request.data.get('phone_number')
+
+        # Update fields if they are provided
+        if full_name:
+            # Assuming you use first_name/last_name or a custom full_name field
+            user.first_name = full_name 
+        if email:
+            user.email = email
+        if phone:
+            user.phone_number = phone
+            
+        user.save()
+
+        return Response({
+            'success': True,
+            'message': 'Profile updated successfully',
+            'user': UserSerializer(user).data
+        }, status=status.HTTP_200_OK)
+        
+        
+        
+        
+  
+    # login with google
     @action(detail=False, methods=['post'], url_path='google_login')
     def google_login(self, request):
         email = request.data.get('email')

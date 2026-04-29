@@ -53,7 +53,7 @@ class _MoreScreenState extends State<MoreScreen> {
 
   Future<void> _logout(BuildContext context) async {
     await _authService.logout();
-    
+
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Logged out successfully')),
@@ -83,12 +83,14 @@ class _MoreScreenState extends State<MoreScreen> {
                 CircleAvatar(
                   radius: 40,
                   backgroundColor: Theme.of(context).primaryColor,
-                  child: const Icon(Icons.person, size: 50, color: Colors.white),
+                  child:
+                      const Icon(Icons.person, size: 50, color: Colors.white),
                 ),
                 const SizedBox(height: 12),
                 Text(
                   _userName,
-                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                      fontSize: 20, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -97,65 +99,60 @@ class _MoreScreenState extends State<MoreScreen> {
                 ),
                 const SizedBox(height: 12),
                 OutlinedButton(
-                  onPressed: () {},
+                    onPressed: () async {
+                    final updated = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => PersonalInfoScreen(
+                                currentName: _userName,
+                                currentEmail: _userEmail)));
+                    if (updated == true) _initialize(); // Refresh UI
+                  },
                   child: Text('edit_profile'.tr(context)),
                 ),
               ],
             ),
           ),
-          
+
           // Settings Options
           AnimatedCard(
             delay: 100,
             child: Column(
               children: [
-              // Inside MoreScreen build...
-_buildSettingsTile(
-  context: context, 
-  icon: Icons.person_outline,
-  title: 'personal_info'.tr(context),
-  onTap: () async {
-    final updated = await Navigator.push(
-      context, 
-      MaterialPageRoute(builder: (_) => PersonalInfoScreen(
-        currentName: _userName, 
-        currentEmail: _userEmail
-      ))
-    );
-    if (updated == true) _initialize(); // Refresh UI
-  },
-),
-_buildSettingsTile(
-  context: context, 
-  icon: Icons.lock_outline,
-  title: 'change_password'.tr(context),
-  onTap: () => Navigator.push(
-    context, 
-    MaterialPageRoute(builder: (_) => const ChangePasswordScreen())
-  ),
-),
+                // Inside MoreScreen build...
                 _buildSettingsTile(
-                  context: context, 
+                  context: context,
+                  icon: Icons.person_outline,
+                  title: 'personal_info'.tr(context),
+                  onTap: () async {
+                    final updated = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => PersonalInfoScreen(
+                                currentName: _userName,
+                                currentEmail: _userEmail)));
+                    if (updated == true) _initialize(); // Refresh UI
+                  },
+                ),
+                _buildSettingsTile(
+                  context: context,
+                  icon: Icons.lock_outline,
+                  title: 'change_password'.tr(context),
+                  onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const ChangePasswordScreen())),
+                ),
+                _buildSettingsTile(
+                  context: context,
                   icon: Icons.notifications_outlined,
                   title: 'notifications'.tr(context),
                   onTap: () {},
                 ),
+                
+                
                 _buildSettingsTile(
-                  context: context, 
-                  icon: Icons.language,
-                  title: 'language'.tr(context),
-                  onTap: () {
-                    // Show language selector
-                  },
-                ),
-                _buildSettingsTile(
-                  context: context, 
-                  icon: Icons.dark_mode_outlined,
-                  title: 'theme'.tr(context),
-                  onTap: () {},
-                ),
-                _buildSettingsTile(
-                  context: context, 
+                  context: context,
                   icon: Icons.file_download_outlined,
                   title: 'data_export'.tr(context),
                   onTap: () {},
@@ -163,26 +160,26 @@ _buildSettingsTile(
               ],
             ),
           ),
-          
+
           // Support Section
           AnimatedCard(
             delay: 200,
             child: Column(
               children: [
                 _buildSettingsTile(
-                  context: context, 
+                  context: context,
                   icon: Icons.help_outline,
                   title: 'help_support'.tr(context),
                   onTap: () {},
                 ),
                 _buildSettingsTile(
-                  context: context, 
+                  context: context,
                   icon: Icons.privacy_tip_outlined,
                   title: 'privacy_policy'.tr(context),
                   onTap: () {},
                 ),
                 _buildSettingsTile(
-                  context: context, 
+                  context: context,
                   icon: Icons.description_outlined,
                   title: 'terms_conditions'.tr(context),
                   onTap: () {},
@@ -190,7 +187,7 @@ _buildSettingsTile(
               ],
             ),
           ),
-          
+
           // Logout Button
           AnimatedCard(
             delay: 300,
@@ -205,24 +202,24 @@ _buildSettingsTile(
               ),
             ),
           ),
-          
+
           const SizedBox(height: 16),
         ],
       ),
     );
   }
 
- Widget _buildSettingsTile({
-  required BuildContext context,
-  required IconData icon,
-  required String title,
-  required VoidCallback onTap,
-}) {
-  return ListTile(
-    leading: Icon(icon, color: Theme.of(context).primaryColor),
-    title: Text(title),
-    trailing: const Icon(Icons.chevron_right),
-    onTap: onTap,
-  );
-}
+  Widget _buildSettingsTile({
+    required BuildContext context,
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return ListTile(
+      leading: Icon(icon, color: Theme.of(context).primaryColor),
+      title: Text(title),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: onTap,
+    );
+  }
 }
