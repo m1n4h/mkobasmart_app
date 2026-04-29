@@ -1,5 +1,7 @@
 // lib/screens/more/more_screen.dart
 import 'package:flutter/material.dart';
+import 'package:mkobasmart_app/screens/more/change_password_screen.dart';
+import 'package:mkobasmart_app/screens/more/personal_info_screen.dart';
 import '../../widgets/animated_card.dart';
 import '../../localization/app_localizations.dart';
 import '../authentication/auth_screen.dart';
@@ -107,18 +109,31 @@ class _MoreScreenState extends State<MoreScreen> {
             delay: 100,
             child: Column(
               children: [
-                _buildSettingsTile(
-                  context: context, 
-                  icon: Icons.person_outline,
-                  title: 'personal_info'.tr(context),
-                  onTap: () {},
-                ),
-                _buildSettingsTile(
-                  context: context, 
-                  icon: Icons.lock_outline,
-                  title: 'change_password'.tr(context),
-                  onTap: () {},
-                ),
+              // Inside MoreScreen build...
+_buildSettingsTile(
+  context: context, 
+  icon: Icons.person_outline,
+  title: 'personal_info'.tr(context),
+  onTap: () async {
+    final updated = await Navigator.push(
+      context, 
+      MaterialPageRoute(builder: (_) => PersonalInfoScreen(
+        currentName: _userName, 
+        currentEmail: _userEmail
+      ))
+    );
+    if (updated == true) _initialize(); // Refresh UI
+  },
+),
+_buildSettingsTile(
+  context: context, 
+  icon: Icons.lock_outline,
+  title: 'change_password'.tr(context),
+  onTap: () => Navigator.push(
+    context, 
+    MaterialPageRoute(builder: (_) => const ChangePasswordScreen())
+  ),
+),
                 _buildSettingsTile(
                   context: context, 
                   icon: Icons.notifications_outlined,

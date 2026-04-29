@@ -185,4 +185,29 @@ Future<Map<String, dynamic>> googleLogin({required String email, required String
       return {'success': false, 'error': e.toString()};
     }
   }
+  // Add these to your existing AuthService class
+Future<Map<String, dynamic>> updateProfile({String? name, String? email, String? imagePath}) async {
+  try {
+    // If you have a profile picture, you'd use a MultipartRequest here
+    final response = await ApiService.put('/auth/profile/update/', {
+      'full_name': name,
+      'email': email,
+      // 'image': imagePath, // Handle image upload logic if applicable
+    });
+    return {'success': response.statusCode == 200};
+  } catch (e) {
+    return {'success': false, 'error': e.toString()};
+  }
+}
+
+Future<Map<String, dynamic>> changePassword(String newPassword) async {
+  try {
+    final response = await ApiService.post('/auth/password/change/', {
+      'new_password': newPassword,
+    });
+    return {'success': response.statusCode == 200};
+  } catch (e) {
+    return {'success': false, 'error': e.toString()};
+  }
+}
 }
