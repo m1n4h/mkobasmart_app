@@ -42,6 +42,7 @@ class AuthService {
           'last_name': lastName,
         }),
       );
+      
 
       if (response.statusCode == 201) {
         final data = json.decode(response.body);
@@ -51,9 +52,11 @@ class AuthService {
         final body = json.decode(response.body);
         return {'success': false, 'error': _extractError(body, fallback: 'Failed to register')};
       }
+      
     } catch (e) {
       return {'success': false, 'error': e.toString()};
     }
+    
   }
 
   Future<Map<String, dynamic>> login({

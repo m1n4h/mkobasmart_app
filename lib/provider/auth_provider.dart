@@ -15,45 +15,50 @@ class AuthProvider extends ChangeNotifier {
   String? get error => _error;
   bool get isAuthenticated => _currentUser != null;
 
-  Future<bool> register({
-    required String username,
-    required String email,
-    required String password,
-    String? phoneNumber,
-    String? firstName,
-    String? lastName,
-  }) async {
-    _setLoading(true);
-    _clearError();
+ // lib/providers/auth_provider.dart
 
-    try {
-      final result = await _authService.register(
-        username: username,
-        email: email,
-        password: password,
-        phoneNumber: phoneNumber,
-        firstName: firstName,
-        lastName: lastName,
-      );
+Future<bool> register({
+  required String username,
+  required String email,
+  required String password,
+  String? phoneNumber,
+  String? firstName,
+  String? lastName,
+}) async {
+  _setLoading(true);
+  _clearError();
 
-      if (result['success']) {
-        _currentUser = result['user'];
-        _setLoading(false);
-        notifyListeners();
-        return true;
-      } else {
-        _error = result['error'].toString();
-        _setLoading(false);
-        notifyListeners();
-        return false;
-      }
-    } catch (e) {
-      _error = e.toString();
+  try {
+    final result = await _authService.register(
+      username: username,
+      email: email,
+      password: password,
+      phoneNumber: phoneNumber,
+      firstName: firstName,
+      lastName: lastName,
+    );
+
+if (result['success']) {
+      // The Model's fromJson now handles the @mkobasmart.com check automatically
+      _currentUser = result['user']; 
+      _setLoading(false);
+      notifyListeners();
+      return true;
+    }
+    else {
+      _error = result['error'].toString();
       _setLoading(false);
       notifyListeners();
       return false;
     }
+  } catch (e) {
+    _error = e.toString();
+    _setLoading(false);
+    notifyListeners();
+    return false;
   }
+}
+  
 
   Future<bool> login({
     String? email,

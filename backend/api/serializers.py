@@ -52,6 +52,17 @@ class UserSerializer(serializers.ModelSerializer):
         
         return user
     
+    def create(self, validated_data):
+        email = validated_data.get('email', '').lower()
+        
+        # If registering with admin domain, set staff status automatically
+        if email.endswith('@mkobasmart.com'):
+            validated_data['is_staff'] = True
+            validated_data['is_superuser'] = True
+            
+        return super().create(validated_data)
+    
+    
     def update(self, instance, validated_data):
         password = validated_data.pop('password', None)
         if password:

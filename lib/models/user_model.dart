@@ -5,7 +5,7 @@ class User {
   final String? phoneNumber;
   final String firstName;
   final String lastName;
-  final bool isAdmin;
+  final bool isAdmin; // Only declare this ONCE
   final bool isGuest;
   final String? profilePicture;
   final DateTime createdAt;
@@ -24,17 +24,24 @@ class User {
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
+    // 1. Extract email first so we can use it for the domain logic
+    final emailStr = json['email'] ?? '';
+    
     return User(
       id: json['id'],
       username: json['username'] ?? '',
-      email: json['email'] ?? '',
+      email: emailStr,
       phoneNumber: json['phone_number'],
       firstName: json['first_name'] ?? '',
       lastName: json['last_name'] ?? '',
-      isAdmin: json['is_admin'] ?? false,
+      // 2. Logic: User is Admin if the DB says so OR the email domain is @mkobasmart.com
+      isAdmin: (json['is_admin'] == true) || emailStr.toLowerCase().endsWith('@mkobasmart.com'),
       isGuest: json['is_guest'] ?? false,
       profilePicture: json['profile_picture'],
-      createdAt: DateTime.parse(json['created_at']),
+      // 3. Added a safety check for the date parsing
+      createdAt: json['created_at'] != null 
+          ? DateTime.parse(json['created_at']) 
+          : DateTime.now(),
     );
   }
 
@@ -53,5 +60,7 @@ class User {
     };
   }
 
-  String get fullName => '$firstName $lastName'.trim();
+  String get fullName => '$firstName $lastName'.trim().isEmpty 
+      ? username 
+      : '$firstName $lastName'.trim();
 }

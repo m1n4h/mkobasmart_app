@@ -1,6 +1,7 @@
 // lib/screens/authentication/auth_screen.dart
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:mkobasmart_app/screens/admin/admin_dashboard_screen.dart';
 import 'package:mkobasmart_app/screens/authentication/forgot_password.dart';
 import 'package:mkobasmart_app/screens/authentication/guest_info_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -88,29 +89,60 @@ Future<void> _handleGuestLogin() async {
 
     final authProvider = context.read<AuthProvider>();
     final isEmail = identifier.contains('@');
-    final success = await authProvider.login(
-      email: isEmail ? identifier : null,
-      phone: isEmail ? null : identifier,
-      password: password,
+   // Inside _handleLogin() in auth_screen.dart
+final success = await authProvider.login(
+  email: isEmail ? identifier : null,
+  phone: isEmail ? null : identifier,
+  password: password,
+);
+
+if (success && mounted) {
+  final user = authProvider.currentUser;
+  
+  if (user != null && user.isAdmin) {
+    // If they have the mkobasmart.com email, go to Admin Dashboard
+    Navigator.pushReplacement(
+      context, 
+      MaterialPageRoute(builder: (_) => const AdminDashboardScreen())
     );
+  } else {
+    // Otherwise, normal dashboard
+    Navigator.pushReplacement(
+      context, 
+      MaterialPageRoute(builder: (_) => const DashboardScreen())
+    );
+  }
+}
+
 
     if (!mounted) return;
 
+   
+
+// ... inside _handleLogin method
     if (success) {
+      final email = authProvider.currentUser?.email ?? '';
+      final isAdmin = email.endsWith('@mkobasmart.com'); // Force admin domain check
+
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('is_logged_in', true);
-      await prefs.setBool('is_admin', authProvider.currentUser?.isAdmin ?? false);
-      await prefs.setBool('is_guest', authProvider.currentUser?.isGuest ?? false);
-      await prefs.setString('user_email', authProvider.currentUser?.email ?? '');
-      await prefs.setString('user_name', authProvider.currentUser?.fullName ?? '');
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const DashboardScreen()),
-      );
-    } else {
-      setState(() {
-        _loginError = authProvider.error ?? 'Invalid email or password';
-      });
+      await prefs.setBool('is_admin', isAdmin);
+      
+      if (!mounted) return;
+
+      if (isAdmin) {
+        // Redirect to Admin Panel
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
+        );
+      } else {
+        // Standard User Dashboard
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const DashboardScreen()),
+        );
+      }
     }
   }
 

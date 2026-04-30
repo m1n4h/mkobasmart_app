@@ -44,7 +44,8 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
     return password.length >= 6;
   }
 
-  void _validateAndCreateAccount() async {
+
+void _validateAndCreateAccount() async {
     setState(() {
       _emailError = null;
       _phoneError = null;
@@ -53,7 +54,9 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
     });
 
     bool isValid = true;
+    final email = _emailController.text.trim().toLowerCase();
 
+    // 1. Basic Full Name Check
     if (_fullNameController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter your full name')),
@@ -61,16 +64,19 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
       return;
     }
 
-    if (!_isValidEmail(_emailController.text.trim())) {
+    // 2. Email Validation & Admin Domain Check
+    if (!_isValidEmail(email)) {
       setState(() => _emailError = 'Please enter a valid email address');
       isValid = false;
-    }
-
+    } 
+    
+    // 3. Phone Validation
     if (!_isValidPhone(_phoneController.text.trim())) {
       setState(() => _phoneError = 'Please enter a valid phone number (e.g., +255712345678)');
       isValid = false;
     }
 
+    // 4. Password Validation
     if (!_isValidPassword(_passwordController.text)) {
       setState(() => _passwordError = 'Password must be at least 6 characters');
       isValid = false;
@@ -81,6 +87,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
       isValid = false;
     }
 
+    // 5. Terms Agreement
     if (!_agreeTerms) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please agree to the terms and conditions')),
@@ -93,42 +100,46 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
       final names = fullName.split(RegExp(r'\s+')).where((e) => e.isNotEmpty).toList();
       final firstName = names.isNotEmpty ? names.first : '';
       final lastName = names.length > 1 ? names.sublist(1).join(' ') : '';
-      final username = _emailController.text.trim().split('@').first;
+      final username = email.split('@').first;
 
       final authProvider = context.read<AuthProvider>();
+      
+      // The provider will handle the actual API call
       final registered = await authProvider.register(
         username: username,
-        email: _emailController.text.trim(),
+        email: email,
         password: _passwordController.text,
         phoneNumber: _phoneController.text.trim(),
         firstName: firstName,
         lastName: lastName,
       );
 
-      
       if (registered && mounted) {
+        // Distinct success message based on domain
+        bool isAdmin = email.endsWith('@mkobasmart.com');
+        
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Account created successfully! Please sign in.'),
-            backgroundColor: Colors.green,
+          SnackBar(
+            content: Text(isAdmin 
+              ? 'Admin account created! Please sign in to access the Command Panel.' 
+              : 'Account created successfully! Please sign in.'),
+            backgroundColor: isAdmin ? Colors.blue : Colors.green,
           ),
         );
 
-       
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => const AuthScreen()),
         );
         
       } else if (mounted) {
-        // Handle failure
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(authProvider.error ?? 'Failed to create account')),
         );
       }
     }
   }
-
+  
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;

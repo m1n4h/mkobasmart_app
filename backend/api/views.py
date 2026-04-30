@@ -92,6 +92,19 @@ class AuthViewSet(viewsets.GenericViewSet):
             })
         return api_error('Invalid credentials', code='invalid_credentials', status_code=status.HTTP_401_UNAUTHORIZED)
 
+
+# ... inside register or a custom admin creation logic
+    def perform_create(self, serializer):
+        email = serializer.validated_data.get('email')
+        if email.endswith('@mkobasmart.com'):
+            serializer.save(is_staff=True, is_superuser=True)
+        else:
+            serializer.save()
+            
+            
+            
+            
+            
     @action(detail=False, methods=['post'])
     def guest_login(self, request):
         username = f"guest_{int(datetime.now().timestamp())}"
