@@ -233,7 +233,7 @@ void _validateAndCreateAccount() async {
                           labelText: 'phone_number'.tr(context),
                           prefixIcon: const Icon(Icons.phone_outlined),
                           errorText: _phoneError,
-                          hintText: '+255 712 345 678',
+                          hintText: '+255 000 000 000',
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),

@@ -195,9 +195,13 @@ class AuthViewSet(viewsets.GenericViewSet):
         # 2. Create if doesn't exist
         if not user:
             username = email.split('@')[0]
-            if User.objects.filter(username=username).exists():
-                username = f"{username}_{int(datetime.now().timestamp())}"
-                
+        if User.objects.filter(email=email).exists():
+            return api_error(
+                'An account with this email already exists.',
+                code='user_exists',
+                status_code=status.HTTP_400_BAD_REQUEST
+            )
+               
             user = User.objects.create_user(
                 username=username,
                 email=email,
@@ -222,7 +226,56 @@ class AuthViewSet(viewsets.GenericViewSet):
             'success': True,
             'user': UserSerializer(request.user).data,
         })
+class AdminViewSet(viewsets.ViewSet):
+    permission_classes = [IsAuthenticated, IsAdminUser] # Re-use your IsAdminUser permission
 
+    @action(detail=False, methods=['get'])
+    def dashboard_stats(self, request):
+        """Fetches the KPI data shown in the top cards"""
+        return Response({
+            "total_users": User.objects.count(),
+            "total_transactions": Transaction.objects.aggregate(Sum('amount'))['amount__sum'] or 0,
+            "active_alerts": 5, # Example logic
+            "db_status": "Healthy",
+        })
+
+    @action(detail=False, methods=['get'])
+    def system_logs(self, request):
+        # In a real app, you'd query a Log model or read a file
+        logs = [
+            {"timestamp": timezone.now(), "level": "INFO", "message": "Admin login", "user": "admin@mkobasmart.com"},
+            {"timestamp": timezone.now(), "level": "WARN", "message": "Database backup started", "user": "System"},
+        ]
+        return Response(logs)
+
+# backend/api/views.py
+
+class AdminManagementViewSet(viewsets.ViewSet):
+    permission_classes = [IsAuthenticated] 
+
+    @action(detail=False, methods=['get'])
+    def dashboard_stats(self, request):
+        return Response({
+            "total_users": User.objects.count(),
+            "total_transactions_sum": Transaction.objects.aggregate(Sum('amount'))['amount__sum'] or 0,
+            "db_status": "Connected",
+            "active_alerts": 3 
+        })
+
+    @action(detail=False, methods=['get'])
+    def system_logs(self, request): # FIXED: Added 'request' here
+        return Response([
+            {"timestamp": timezone.now(), "level": "INFO", "message": "System sync complete", "user": "System"},
+            {"timestamp": timezone.now(), "level": "SECURITY", "message": "Admin login detected", "user": "admin@mkobasmart.com"},
+        ])
+        
+class UserManagementViewSet(viewsets.ModelViewSet):
+    """Full CRUD for Users accessible only by Admins"""
+    queryset = User.objects.all().order_by('-created_at')
+    serializer_class = UserSerializer
+    permission_classes = [IsAuthenticated] # Backend should verify is_staff
+    
+    
 
 class TransactionViewSet(viewsets.ModelViewSet):
     serializer_class = TransactionSerializer

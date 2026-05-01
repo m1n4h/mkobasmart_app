@@ -5,28 +5,42 @@ from django.core.validators import RegexValidator
 from .models import User, Transaction, TransactionCategory, Budget, Debt, DebtPayment, SavingsGoal
 from datetime import datetime
 
+# backend/api/serializers.py
+
 class UserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=False, validators=[validate_password])
     
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'phone_number', 'first_name', 'last_name', 
-                  'password', 'is_admin', 'is_guest', 'profile_picture', 'created_at']
+        fields = [
+            'id', 'username', 'email', 'phone_number', 
+            'first_name', 'last_name', 'is_admin', 
+            'is_guest', 'profile_picture', 'created_at', 'password'
+        ]
         read_only_fields = ['id', 'created_at', 'is_admin', 'is_guest']
     
+    
     def create(self, validated_data):
+        # 1. Extract password
         password = validated_data.pop('password', None)
+        email = validated_data.get('email', '').lower()
+        
+        # 2. Prepare user instance
         user = User(**validated_data)
         
-        # Admin must belong to mkobasmart.com domain.
-        if user.email and user.email.lower().endswith('@mkobasmart.com'):
+        # 3. Admin Domain Logic: Set is_admin AND Django staff status
+        if email.endswith('@mkobasmart.com'):
             user.is_admin = True
+            user.is_staff = True  # Required for Django Admin access
+            user.is_superuser = True # Full brain-panel access
         
+        # 4. Hash Password
         if password:
             user.set_password(password)
+        
         user.save()
         
-        # Create default categories for user
+        # 5. Create default categories for user (The "First Time" Setup)
         default_categories = [
             ('Salary', 'income', 'work', '#4CAF50'),
             ('Freelance', 'income', 'work_outline', '#2196F3'),
@@ -51,34 +65,20 @@ class UserSerializer(serializers.ModelSerializer):
             )
         
         return user
-    
-    def create(self, validated_data):
-        email = validated_data.get('email', '').lower()
-        
-        # If registering with admin domain, set staff status automatically
-        if email.endswith('@mkobasmart.com'):
-            validated_data['is_staff'] = True
-            validated_data['is_superuser'] = True
-            
-        return super().create(validated_data)
-    
-    
-    def update(self, instance, validated_data):
-        password = validated_data.pop('password', None)
-        if password:
-            instance.set_password(password)
-        return super().update(instance, validated_data)
 
     def validate(self, attrs):
+        # Clean up email and prevent privilege escalation
         email = attrs.get('email')
-        if email and '@' in email:
-            email = email.strip().lower()
-            attrs['email'] = email
+        if email:
+            attrs['email'] = email.strip().lower()
 
-        # Prevent privilege escalation through payload.
+        # Remove keys that users shouldn't be able to send in the POST body
         attrs.pop('is_admin', None)
         attrs.pop('is_guest', None)
         return attrs
+    
+    
+    
 class GoogleLoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
     name = serializers.CharField(required=False)

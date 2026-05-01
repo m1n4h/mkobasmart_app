@@ -1,6 +1,9 @@
+// lib/screens/admin/user_management_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../provider/auth_provider.dart';
+import '../../provider/admin_provider.dart';
+import '../../models/user_model.dart'; // Ensure you import your User model
 
 class UserManagementScreen extends StatefulWidget {
   const UserManagementScreen({super.key});
@@ -10,47 +13,104 @@ class UserManagementScreen extends StatefulWidget {
 }
 
 class _UserManagementScreenState extends State<UserManagementScreen> {
-  // Mock data - In a real app, you would fetch this from your Django API
-  final List<Map<String, dynamic>> _users = [
-    {'name': 'Amina Juma', 'email': 'amina@gmail.com', 'status': 'Active', 'role': 'User'},
-    {'name': 'John Doe', 'email': 'john@mkobasmart.com', 'status': 'Active', 'role': 'Admin'},
-    {'name': 'Guest_123', 'email': 'guest123@guest.com', 'status': 'Inactive', 'role': 'Guest'},
-  ];
+  
+  
 
-  void _handleUserAction(String action, String email) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Action: $action performed on $email'))
-    );
-  }
+@override
+void initState() {
+  super.initState();
+  // This triggers the fetch as soon as the admin opens the screen
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    context.read<AdminProvider>().fetchAdminData();
+  });
+}
 
   @override
   Widget build(BuildContext context) {
+    final adminProv = Provider.of<AdminProvider>(context);
+    final users = adminProv.users; 
+
     return Scaffold(
-      appBar: AppBar(title: const Text('User Management')),
-      body: ListView.builder(
-        itemCount: _users.length,
-        itemBuilder: (context, index) {
-          final user = _users[index];
-          return Card(
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: ListTile(
-              leading: CircleAvatar(
-                backgroundColor: user['role'] == 'Admin' ? Colors.orange : Colors.green,
-                child: Text(user['name'][0]),
-              ),
-              title: Text(user['name']),
-              subtitle: Text("${user['email']} • ${user['role']}"),
-              trailing: PopupMenuButton<String>(
-                onSelected: (value) => _handleUserAction(value, user['email']),
-                itemBuilder: (context) => [
-                  const PopupMenuItem(value: 'Edit', child: Text('Edit details')),
-                  const PopupMenuItem(value: 'Deactivate', child: Text('Deactivate Account', style: TextStyle(color: Colors.orange))),
-                  const PopupMenuItem(value: 'Delete', child: Text('Delete Permanent', style: TextStyle(color: Colors.red))),
-                ],
-              ),
-            ),
-          );
-        },
+      appBar: AppBar(
+        title: const Text('User Management'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.person_add),
+            onPressed: () => _showUserForm(context), // CREATE
+          )
+        ],
+      ),
+      body: adminProv.isLoading 
+          ? const Center(child: CircularProgressIndicator())
+          : users.isEmpty 
+              ? const Center(child: Text("No users found in the system."))
+              : RefreshIndicator(
+                  onRefresh: () => adminProv.fetchAdminData(), // READ (Refresh)
+                  child: ListView.builder(
+                    itemCount: users.length,
+                    itemBuilder: (context, index) {
+                      final user = users[index];
+                      return ListTile(
+                        leading: CircleAvatar(
+                          child: Text(user.username[0].toUpperCase()),
+                        ),
+                        title: Text(user.fullName),
+                        subtitle: Text(user.email),
+                        trailing: PopupMenuButton<String>(
+                          onSelected: (value) {
+                            if (value == 'Edit') {
+                              _showUserForm(context, user: user); // UPDATE
+                            } else if (value == 'Delete') {
+                              _confirmDelete(context, adminProv, user); // DELETE
+                            }
+                          },
+                          itemBuilder: (context) => [
+                            const PopupMenuItem(value: 'Edit', child: Text('Edit')),
+                            const PopupMenuItem(
+                              value: 'Delete', 
+                              child: Text('Delete', style: TextStyle(color: Colors.red))
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+    );
+  }
+
+  // DIALOG FOR CREATE & EDIT
+  void _showUserForm(BuildContext context, {User? user}) {
+    // You can navigate to a specific form screen or show a Dialog here
+    // For now, let's assume you have a dedicated screen to handle the complex registration fields
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Redirecting to User Form..."))
+    );
+  }
+
+  // CONFIRMATION DIALOG FOR DELETE
+  void _confirmDelete(BuildContext context, AdminProvider prov, User user) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Confirm Delete"),
+        content: Text("Are you sure you want to remove ${user.username}?"),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () async {
+              Navigator.pop(context);
+              bool success = await prov.removeUser(user.id);
+              if (success && mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("User deleted successfully"))
+                );
+              }
+            },
+            child: const Text("Delete"),
+          ),
+        ],
       ),
     );
   }

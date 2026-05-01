@@ -23,27 +23,28 @@ class User {
     required this.createdAt,
   });
 
-  factory User.fromJson(Map<String, dynamic> json) {
-    // 1. Extract email first so we can use it for the domain logic
-    final emailStr = json['email'] ?? '';
-    
-    return User(
-      id: json['id'],
-      username: json['username'] ?? '',
-      email: emailStr,
-      phoneNumber: json['phone_number'],
-      firstName: json['first_name'] ?? '',
-      lastName: json['last_name'] ?? '',
-      // 2. Logic: User is Admin if the DB says so OR the email domain is @mkobasmart.com
-      isAdmin: (json['is_admin'] == true) || emailStr.toLowerCase().endsWith('@mkobasmart.com'),
-      isGuest: json['is_guest'] ?? false,
-      profilePicture: json['profile_picture'],
-      // 3. Added a safety check for the date parsing
-      createdAt: json['created_at'] != null 
-          ? DateTime.parse(json['created_at']) 
-          : DateTime.now(),
-    );
-  }
+  // lib/models/user_model.dart
+
+// lib/models/user_model.dart
+
+factory User.fromJson(Map<String, dynamic> json) {
+  return User(
+    id: json['id'] ?? 0,
+    username: json['username'] ?? '',
+    email: json['email'] ?? '',
+    phoneNumber: json['phone_number']?.toString(), // Safely convert to String
+    firstName: json['first_name'] ?? '',
+    lastName: json['last_name'] ?? '',
+    // Use the logic for @mkobasmart.com admins
+    isAdmin: (json['is_admin'] == true) || 
+             (json['email'] ?? '').toString().toLowerCase().endsWith('@mkobasmart.com'),
+    isGuest: json['is_guest'] ?? false,
+    profilePicture: json['profile_picture'],
+    createdAt: json['created_at'] != null 
+        ? DateTime.parse(json['created_at']) 
+        : DateTime.now(),
+  );
+}
 
   Map<String, dynamic> toJson() {
     return {

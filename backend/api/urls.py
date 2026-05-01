@@ -14,7 +14,8 @@ router.register(r'debts', views.DebtViewSet, basename='debt')
 router.register(r'savings-goals', views.SavingsGoalViewSet, basename='savings-goal')
 router.register(r'dashboard', views.DashboardViewSet, basename='dashboard')
 router.register(r'admin', views.AdminViewSet, basename='admin')
-
+router.register(r'admin-management', views.AdminManagementViewSet, basename='admin-management')
+router.register(r'user-management', views.UserManagementViewSet, basename='user-management')
 urlpatterns = [
     path('', include(router.urls)),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),

@@ -1,6 +1,7 @@
 // lib/main.dart (Simplified - No GraphQL)
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:mkobasmart_app/provider/admin_provider.dart';
 import 'package:mkobasmart_app/provider/auth_provider.dart';
 import 'package:mkobasmart_app/provider/budget_provider.dart';
 import 'package:mkobasmart_app/provider/category_provider.dart';
@@ -33,6 +34,7 @@ class MkobaSmartApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => TransactionProvider()),
         ChangeNotifierProvider(create: (_) => DebtProvider()),
         ChangeNotifierProvider(create: (_) => BudgetProvider()),
+       ChangeNotifierProvider(create: (_) => AdminProvider()), // Add this line
         ChangeNotifierProvider(create: (_) => CategoryProvider()), 
       ],
       child: Consumer<ThemeProvider>(
